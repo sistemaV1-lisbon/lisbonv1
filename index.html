@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>LISBON — RASTREIO PURO</title>
+    <title>LISBON — RASTREIO PURO v2.2 FOTO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { height: 100%; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; }
         
         .camera-container { position: fixed; inset: 0; background: #050505; display: flex; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); }
-        canvas { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 10; }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); will-change: transform; }
+        canvas { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 10; will-change: transform; }
         
         .divisores { position: fixed; inset: 0; z-index: 1; display: flex; pointer-events: none; opacity: 0.3; }
         .parte { flex: 1; border-right: 1px dashed #666; }
@@ -29,7 +29,7 @@
         
         .botoes { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; padding: 20px; background: linear-gradient(to top, #000 70%, transparent); display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         button { padding: 18px 10px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer; transition: all 0.2s; }
-        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
         button:active { transform: scale(0.97); }
         .ligar { background: linear-gradient(135deg, #16a34a, #15803d); }
         .marcar { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
@@ -50,7 +50,7 @@
 </div>
 
 <div id="info" class="info">
-    <div class="mensagem">Ligue e mostre a pedrinha para fixar</div>
+    <div class="mensagem">Ligue e mostre a pedrinha vermelha para fixar</div>
 </div>
 
 <div class="camera-container">
@@ -67,7 +67,10 @@
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const ctx = canvas.getContext('2d', { 
+    willReadFrequently: true,
+    alpha: false
+});
 const statusEl = document.getElementById('status');
 const infoEl = document.getElementById('info');
 
@@ -80,33 +83,45 @@ const btn = {
 const estado = {
     ligado: false,
     stream: null,
-    pedrinhaFixada: null, // UMA VEZ FIXADA, NUNCA PERDE
-    ultimaX: null,
-    ultimaY: null,
-    confianca: 0
+    pedrinhaFixada: false,
+    ultimaX: 0,
+    ultimaY: 0,
+    confianca: 0,
+    ultimoTempo: 0,
+    largura: 0,
+    altura: 0
 };
 
-// 🔴 COR EXATA DA PEDRINHA — SÓ ELA
+// 🔴 COR AJUSTADA EXATAMENTE PELAS FOTOS
 const COR = {
-    rMin: 160, rMax: 255,
-    gMin: 0, gMax: 100,
-    bMin: 0, bMax: 100,
-    pesoVermelho: 2.5,
-    minPontos: 2,
-    suavidade: 0.65, // Segue firme mas natural
-    segurancaMs: 3000 // Mantém marcação 3s sem ver
+    // Pedrinha vermelha brilhante — valores calibrados
+    rMin: 140, rMax: 255,      // Vermelho forte
+    gMin: 0, gMax: 120,        // Pouco verde
+    bMin: 0, bMax: 120,        // Pouco azul
+    minPontos: 2,              // Detecta rápido
+    maxPontos: 200,            // Ignora manchas grandes
+    pesoVermelho: 2.2,         // Vermelho dominante
+    suavidade: 0.65,           // Firme mas rápido
+    segurancaMs: 3000,         // Mantém rastro 3s sem ver
+    passo: 3,                  // Equilíbrio velocidade/precisão
+    tamanhoEsperado: 80        // Tamanho aproximado da pedrinha
 };
 
 btn.ligar.addEventListener('click', async () => {
     try {
         estado.stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+            video: { 
+                facingMode: 'environment', 
+                width: { ideal: 960 },
+                height: { ideal: 540 },
+                frameRate: { ideal: 30 }
+            }
         });
         video.srcObject = estado.stream;
         await video.play();
         
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        estado.largura = canvas.width = video.videoWidth;
+        estado.altura = canvas.height = video.videoHeight;
         
         estado.ligado = true;
         statusEl.textContent = "✅ CÂMERA LIGADA — mostre a pedrinha";
@@ -124,11 +139,9 @@ btn.ligar.addEventListener('click', async () => {
     }
 });
 
-// 🎯 FIXAR — AQUI TRAVA PRA SEMPRE
 btn.marcar.addEventListener('click', () => {
     if (!estado.ligado) return;
     
-    // Verifica se tem pedrinha visível agora
     const detectada = procurarPedrinha();
     if (detectada) {
         estado.pedrinhaFixada = true;
@@ -139,91 +152,96 @@ btn.marcar.addEventListener('click', () => {
         btn.marcar.disabled = true;
         btn.marcar.textContent = "✅ FIXADA";
     } else {
-        infoEl.innerHTML = `<div style="color:#f59e0b">⚠️ Mostre a pedrinha primeiro e clique novamente</div>`;
+        infoEl.innerHTML = `<div style="color:#f59e0b">⚠️ Mostre a pedrinha e clique novamente</div>`;
     }
 });
 
 function loopPrincipal() {
     if (!estado.ligado) return;
     
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const agora = performance.now();
     
-    const agora = Date.now();
+    ctx.clearRect(0, 0, estado.largura, estado.altura);
+    ctx.drawImage(video, 0, 0, estado.largura, estado.altura);
+    
     const vistaAgora = procurarPedrinha();
     
     if (vistaAgora) {
-        // Pedrinha VISTA — atualiza posição
         if (estado.pedrinhaFixada) {
-            // Suave mas fiel — segue o movimento real
-            estado.ultimaX = estado.ultimaX * COR.suavidade + vistaAgora.x * (1 - COR.suavidade);
-            estado.ultimaY = estado.ultimaY * COR.suavidade + vistaAgora.y * (1 - COR.suavidade);
+            // Rastreio responsivo: movimento rápido = responde rápido
+            const dist = Math.hypot(vistaAgora.x - estado.ultimaX, vistaAgora.y - estado.ultimaY);
+            const fator = dist > 60 ? 0.5 : COR.suavidade;
+            
+            estado.ultimaX = estado.ultimaX * fator + vistaAgora.x * (1 - fator);
+            estado.ultimaY = estado.ultimaY * fator + vistaAgora.y * (1 - fator);
         } else {
             estado.ultimaX = vistaAgora.x;
             estado.ultimaY = vistaAgora.y;
         }
         estado.confianca = vistaAgora.conf;
+        estado.ultimoTempo = agora;
+        
         statusEl.textContent = `✅ Vendo pedrinha — Confiança: ${estado.confianca}%`;
         statusEl.className = "status pronta";
         
-    } else if (estado.pedrinhaFixada && estado.ultimaX !== null) {
-        // Não viu agora MAS JÁ TÁ FIXADA — mantém a última posição
-        statusEl.textContent = "👀 Pedrinha fora de vista — mantendo marcação...";
-        statusEl.className = "status aguardando";
-    } else {
-        statusEl.textContent = "🔍 Procurando pedrinha...";
+    } else if (estado.pedrinhaFixada) {
+        const semVer = agora - estado.ultimoTempo;
+        if (semVer < COR.segurancaMs) {
+            statusEl.textContent = "👀 Pedrinha fora de vista — mantendo rastro...";
+        } else {
+            statusEl.textContent = "⚠️ Rastro mantido — aguardando reaparecer";
+        }
         statusEl.className = "status aguardando";
     }
     
-    // DESENHA A BOLINHA — SEMPRE QUE TIVER POSIÇÃO
-    if (estado.ultimaX !== null && estado.ultimaY !== null) {
+    if (estado.ultimaX !== 0 || estado.ultimaY !== 0) {
         desenharBolinha(estado.ultimaX, estado.ultimaY, estado.pedrinhaFixada);
     }
     
     requestAnimationFrame(loopPrincipal);
 }
 
-// 🔍 PROCURA A PEDRINHA PELA COR
+// 🔍 DETECÇÃO CALIBRADA PELAS FOTOS
 function procurarPedrinha() {
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = imgData.data;
+    const imgData = ctx.getImageData(0, 0, estado.largura, estado.altura);
+    const dados = imgData.data;
     
     let total = 0;
     let somaX = 0, somaY = 0;
     
-    for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i];
-        const g = pixels[i + 1];
-        const b = pixels[i + 2];
+    for (let i = 0; i < dados.length; i += 4 * COR.passo) {
+        const r = dados[i];
+        const g = dados[i + 1];
+        const b = dados[i + 2];
         
-        const ehPedrinha =
-            r >= COR.rMin && r <= COR.rMax &&
-            g >= COR.gMin && g <= COR.gMax &&
-            b >= COR.bMin && b <= COR.bMax &&
-            r > g * COR.pesoVermelho &&
-            r > b * COR.pesoVermelho;
+        // Filtro exato da pedrinha das fotos
+        if (r < COR.rMin || r > COR.rMax) continue;
+        if (g > COR.gMax) continue;
+        if (b > COR.bMax) continue;
+        if (r <= g * COR.pesoVermelho || r <= b * COR.pesoVermelho) continue;
         
-        if (ehPedrinha) {
-            total++;
-            const x = (i / 4) % canvas.width;
-            const y = Math.floor((i / 4) / canvas.width);
-            somaX += x;
-            somaY += y;
-        }
+        total++;
+        const idx = i / 4;
+        const x = idx % estado.largura;
+        const y = (idx / estado.largura) | 0;
+        
+        somaX += x;
+        somaY += y;
     }
     
-    if (total >= COR.minPontos) {
+    // Tamanho correto da pedrinha
+    if (total >= COR.minPontos && total <= COR.maxPontos) {
         return {
             x: somaX / total,
             y: somaY / total,
-            conf: Math.min(100, Math.round((total / 6) * 100))
+            conf: Math.min(100, Math.round((total / COR.tamanhoEsperado) * 100))
         };
     }
     
     return null;
 }
 
-// 🔴 BOLINHA FORTE E VISÍVEL
+// 🔴 BOLINHA — VISUAL IDÊNTICO
 function desenharBolinha(x, y, fixada) {
     ctx.shadowColor = fixada ? '#fbbf24' : '#ff0000';
     ctx.shadowBlur = fixada ? 40 : 30;
@@ -237,7 +255,6 @@ function desenharBolinha(x, y, fixada) {
     ctx.fillStyle = fixada ? 'rgba(251,191,36,0.25)' : 'rgba(255,0,0,0.3)';
     ctx.fill();
     
-    // Anel interno pra destaque
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(x, y, 20, 0, Math.PI * 2);
@@ -247,16 +264,19 @@ function desenharBolinha(x, y, fixada) {
 }
 
 btn.desligar.addEventListener('click', () => {
-    if (estado.stream) estado.stream.getTracks().forEach(t => t.stop());
+    if (estado.stream) {
+        estado.stream.getTracks().forEach(t => t.stop());
+    }
     
     estado.ligado = false;
-    estado.pedrinhaFixada = null;
-    estado.ultimaX = null;
-    estado.ultimaY = null;
+    estado.pedrinhaFixada = false;
+    estado.ultimaX = 0;
+    estado.ultimaY = 0;
     estado.confianca = 0;
+    estado.stream = null;
     
     video.srcObject = null;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, estado.largura, estado.altura);
     
     statusEl.textContent = "Câmera desligada";
     statusEl.className = "status aguardando";
