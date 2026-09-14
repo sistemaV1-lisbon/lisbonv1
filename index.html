@@ -65,7 +65,7 @@
 
 <div id="resultado" class="resultado">
     <div>🔘 Ligue o sistema e permita câmera</div>
-    <div class="movimento">A pedrinha será detectada no instante em que aparecer</div>
+    <div class="movimento">Mostre a pedrinha vermelha durante a calibração</div>
 </div>
 
 <div class="camera-container">
@@ -119,32 +119,32 @@ const estado = {
     rastreando: false,
     stream: null,
     
-    // 🎯 RASTREIO FORTE — guarda TUDO
-    pedrinhaAtual: null,      // Posição atual suavizada
-    ultimaVistaReal: null,    // Última vez que foi VISTA de verdade
-    posicaoFixa: null,        // Posição final travada quando parar
-    copoFinal: 0,             // Copo marcado definitivamente
+    // 🎯 PEDRINHA EXCLUSIVA — UMA SÓ
+    pedrinhaUnica: null,    // A verdadeira, identificada na calibração
+    ultimaPosicao: null,    // Última posição confirmada
+    copoAtual: 0,
+    copoFinal: 0,
+    posicaoDefinitiva: null,
     
-    ultimosMovimentos: [],    // Para detectar quando parou
-    rodadas: [],
-    confianca: 0
+    ultimoMovimento: Date.now(),
+    rodadas: []
 };
 
-// 🔴 DETECÇÃO SENSÍVEL — PEGA NO INSTANTE
+// 🔴 DETECÇÃO EXATA DA PEDRINHA — SÓ ELA
 const ALVO = {
-    rMin: 150, rMax: 255,    // Vermelho amplo pra pegar rápido
-    gMin: 0, gMax: 110,
-    bMin: 0, bMax: 110,
-    minPontos: 2,             // SENSÍVEL — pega mesmo piscando rápido
-    pesoCor: 2.2,
-    suavizacao: 0.92,         // Fica grudada: 92% da posição anterior
-    tempoSeguranca: 1500,     // Mantém marcação por 1.5s após sumir
-    paradoTempoMs: 700        // Se parado por 0.7s = TRAVA DEFINITIVO
+    rMin: 160, rMax: 255,    // Vermelho forte e brilhante
+    gMin: 0, gMax: 95,       // Quase sem verde
+    bMin: 0, bMax: 95,       // Quase sem azul
+    minPontos: 3,
+    maxPontos: 150,          // Ignora manchas grandes
+    raioBusca: 120,          // Só procura perto da última posição
+    pesoCor: 2.8,            // Vermelho MUITO dominante
+    suavizacao: 0.75,        // Segue fiel mas não trava
+    paradoTempo: 800,        // Trava após 0.8s parado
+    manterRastro: 2000       // Mantém rastro por 2s sem ver
 };
 
 let divisoes = { c1: 0, c2: 0, c3: 0 };
-let ultimoTempoMovimento = Date.now();
-let ultimoCopoDetectado = 0;
 
 btn.ligar.addEventListener('click', async () => {
     try {
@@ -163,7 +163,7 @@ btn.ligar.addEventListener('click', async () => {
         estado.ligado = true;
         statusCamEl.textContent = "✅ CÂMERA ON";
         statusCamEl.className = "status-on";
-        resultadoEl.innerHTML = `<div class="buscando">📹 Câmera ativa! Mostre a pedrinha</div>`;
+        resultadoEl.innerHTML = `<div class="buscando">📹 Câmera ativa! Mostre a pedrinha vermelha</div>`;
 
         btn.ligar.disabled = true;
         btn.analisar.disabled = false;
@@ -174,17 +174,18 @@ btn.ligar.addEventListener('click', async () => {
     }
 });
 
-// ⏱️ CALIBRAÇÃO 10s + BOLINHA JÁ MARCANDO
+// ⏱️ CALIBRAÇÃO 10s — IDENTIFICA A PEDRINHA EXCLUSIVA
 btn.analisar.addEventListener('click', () => {
     if (!estado.ligado) return;
     estado.calibrando = true;
+    estado.pedrinhaUnica = null;
     btn.analisar.disabled = true;
     
     let tempoRestante = 10;
     resultadoEl.innerHTML = `
-        <div class="buscando">🧠 CALIBRANDO...</div>
+        <div class="buscando">🧠 CALIBRANDO — MOSTRE A PEDRINHA</div>
         <div class="contador">${tempoRestante}s</div>
-        <div class="movimento">Mantenha a pedrinha visível — marcação aparece em instantes</div>
+        <div class="movimento">Mantenha SOMENTE a pedrinha visível no centro</div>
     `;
 
     const contador = setInterval(() => {
@@ -193,7 +194,7 @@ btn.analisar.addEventListener('click', () => {
             resultadoEl.innerHTML = `
                 <div class="buscando">🧠 CALIBRANDO...</div>
                 <div class="contador">${tempoRestante}s</div>
-                <div class="movimento">Não esconda a pedrinha</div>
+                <div class="movimento">${estado.pedrinhaUnica ? "✅ Pedrinha identificada! Aguarde..." : "Procurando pedrinha vermelha..."}</div>
             `;
         }
     }, 1000);
@@ -201,28 +202,32 @@ btn.analisar.addEventListener('click', () => {
     const loopCalibracao = () => {
         if (!estado.calibrando) return;
         
-        const dados = detectarPedrinha();
-        if (dados.vista) {
-            estado.ultimaVistaReal = { x: dados.x, y: dados.y, tempo: Date.now() };
-            estado.pedrinhaAtual = { x: dados.x, y: dados.y, confianca: dados.confianca };
-            confEl.textContent = `${dados.confianca}%`;
+        const encontrada = detectarPedrinha(true);
+        if (encontrada) {
+            estado.pedrinhaUnica = {
+                x: encontrada.x,
+                y: encontrada.y,
+                tamanho: encontrada.tamanho,
+                cor: encontrada.cor
+            };
+            estado.ultimaPosicao = { x: encontrada.x, y: encontrada.y };
         }
         
         if (tempoRestante <= 0) {
             clearInterval(contador);
             estado.calibrando = false;
             
-            if (estado.ultimaVistaReal) {
+            if (estado.pedrinhaUnica) {
                 estado.calibrado = true;
                 resultadoEl.innerHTML = `
-                    <div class="localizado">✅ CALIBRADO!</div>
-                    <div class="movimento">Pedrinha identificada — clique RASTREAR</div>
+                    <div class="localizado">✅ PEDRINHA IDENTIFICADA!</div>
+                    <div class="movimento">Só ela será rastreada — clique RASTREAR</div>
                 `;
                 btn.rastrear.disabled = false;
             } else {
                 resultadoEl.innerHTML = `
-                    <div class="erro">⚠️ Pedrinha não vista</div>
-                    <div class="movimento">Mostre a pedrinha e calibre novamente</div>
+                    <div class="erro">⚠️ Pedrinha não encontrada</div>
+                    <div class="movimento">Mostre a pedrinha vermelha claramente e calibre novamente</div>
                 `;
                 btn.analisar.disabled = false;
             }
@@ -234,17 +239,17 @@ btn.analisar.addEventListener('click', () => {
     loopCalibracao();
 });
 
-// 🎯 RASTREIO PRINCIPAL — NÃO SOLTA NUNCA
+// 🎯 RASTREIO — SEGUE A ÚNICA PEDRINHA PRA SEMPRE
 btn.rastrear.addEventListener('click', () => {
-    if (!estado.calibrado) return;
+    if (!estado.calibrado || !estado.pedrinhaUnica) return;
     estado.rastreando = true;
-    estado.posicaoFixa = null;
+    estado.posicaoDefinitiva = null;
     estado.copoFinal = 0;
-    ultimoTempoMovimento = Date.now();
+    estado.ultimoMovimento = Date.now();
     
     resultadoEl.innerHTML = `
-        <div class="buscando">🔍 RASTREANDO...</div>
-        <div class="movimento">Seguindo em tempo real — não perde o rastro</div>
+        <div class="buscando">🔍 RASTREANDO PEDRINHA...</div>
+        <div class="movimento">Seguindo exclusivamente a pedrinha identificada</div>
     `;
     btn.rastrear.disabled = true;
     btn.parar.disabled = false;
@@ -255,78 +260,72 @@ function loopPrincipal() {
     if (!estado.rastreando) return;
 
     const agora = Date.now();
-    const dados = detectarPedrinha();
+    const encontrada = detectarPedrinha(false);
     
-    // ✅ VISTA AGORA — atualiza tudo
-    if (dados.vista) {
-        estado.ultimaVistaReal = { x: dados.x, y: dados.y, tempo: agora };
-        ultimoTempoMovimento = agora; // ainda se mexendo
+    if (encontrada) {
+        // ✅ PEDRINHA VISTA — atualiza posição real
+        const deltaX = Math.abs(encontrada.x - estado.ultimaPosicao.x);
+        const deltaY = Math.abs(encontrada.y - estado.ultimaPosicao.y);
         
-        // Suaviza mas segue fiel
-        if (!estado.pedrinhaAtual) {
-            estado.pedrinhaAtual = { x: dados.x, y: dados.y, confianca: dados.confianca };
-        } else {
-            estado.pedrinhaAtual.x = estado.pedrinhaAtual.x * ALVO.suavizacao + dados.x * (1 - ALVO.suavizacao);
-            estado.pedrinhaAtual.y = estado.pedrinhaAtual.y * ALVO.suavizacao + dados.y * (1 - ALVO.suavizacao);
-            estado.pedrinhaAtual.confianca = dados.confianca;
+        // Só aceita se movimento for coerente (não pula de um lado pro outro)
+        if (deltaX < 250 || !estado.ultimaPosicao) {
+            estado.ultimaPosicao.x = estado.ultimaPosicao.x * ALVO.suavizacao + encontrada.x * (1 - ALVO.suavizacao);
+            estado.ultimaPosicao.y = estado.ultimaPosicao.y * ALVO.suavizacao + encontrada.y * (1 - ALVO.suavizacao);
+            estado.ultimoMovimento = agora;
         }
-    }
-    // ✅ NÃO VISTA AGORA — mantém se ainda dentro do tempo de segurança
-    else if (estado.ultimaVistaReal && (agora - estado.ultimaVistaReal.tempo) < ALVO.tempoSeguranca) {
-        // Continua usando a última posição vista — não apaga
-        estado.pedrinhaAtual.x = estado.pedrinhaAtual.x * ALVO.suavizacao + estado.ultimaVistaReal.x * (1 - ALVO.suavizacao);
-        estado.pedrinhaAtual.y = estado.pedrinhaAtual.y * ALVO.suavizacao + estado.ultimaVistaReal.y * (1 - ALVO.suavizacao);
+        confEl.textContent = `${encontrada.confianca}%`;
     }
     
-    confEl.textContent = estado.pedrinhaAtual ? `${estado.pedrinhaAtual.confianca}` : "—";
-
     // 📐 CALCULA COPO ATUAL
     let copoAtual = 0;
-    if (estado.pedrinhaAtual) {
-        if (estado.pedrinhaAtual.x < divisoes.c1) copoAtual = 1;
-        else if (estado.pedrinhaAtual.x < divisoes.c2) copoAtual = 2;
-        else copoAtual = 3;
+    if (estado.ultimaPosicao) {
+        if (estado.ultimaPosicao.x < divisoes.c1) {
+            copoAtual = 1;
+        } else if (estado.ultimaPosicao.x < divisoes.c2) {
+            copoAtual = 2;
+        } else {
+            copoAtual = 3;
+        }
+        estado.copoAtual = copoAtual;
     }
 
-    // ⛳ DETECTA QUANDO PAROU — TRAVA DEFINITIVO
-    const paradoHaQuantoTempo = agora - ultimoTempoMovimento;
-    if (copoAtual > 0 && paradoHaQuantoTempo >= ALVO.paradoTempoMs && !estado.posicaoFixa) {
-        // Os copos PARARAM — marca a última posição real DEFINITIVAMENTE
-        estado.posicaoFixa = { 
-            x: estado.pedrinhaAtual.x, 
-            y: estado.pedrinhaAtual.y 
-        };
+    // ⛳ DETECTA PARADA — TRAVA DEFINITIVO
+    const tempoParado = agora - estado.ultimoMovimento;
+    if (copoAtual > 0 && tempoParado >= ALVO.paradoTempo && !estado.posicaoDefinitiva) {
+        estado.posicaoDefinitiva = { ...estado.ultimaPosicao };
         estado.copoFinal = copoAtual;
-        
-        // Salva rodada
         estado.rodadas.push(copoAtual);
         
-        // MOSTRA RESULTADO FINAL
         resultadoEl.innerHTML = `
             <div class="definitivo">🎯 COPO ${estado.copoFinal} — DEFINITIVO</div>
-            <div class="movimento">Movimento encerrado • posição confirmada</div>
+            <div class="movimento">Pedrinha confirmada • resultado final</div>
         `;
     }
     // Ainda se mexendo — mostra acompanhamento
-    else if (!estado.posicaoFixa && copoAtual > 0) {
+    else if (!estado.posicaoDefinitiva && copoAtual > 0) {
         resultadoEl.innerHTML = `
             <div class="localizado">🎯 COPO ${copoAtual}</div>
-            <div class="movimento">Acompanhando embaralhamento...</div>
+            <div class="movimento">Seguindo pedrinha — não perde o rastro</div>
         `;
     }
-    // Já travou — mantém o resultado fixo
-    else if (estado.posicaoFixa) {
-        // Mantém mostrando o resultado definitivo
-    }
-    else {
-        resultadoEl.innerHTML = `<div class="buscando">👀 Procurando pedrinha...</div>`;
+    // Sem sinal mas mantém rastro
+    else if (!estado.posicaoDefinitiva) {
+        const semSinal = agora - estado.ultimoMovimento;
+        if (semSinal < ALVO.manterRastro && copoAtual > 0) {
+            resultadoEl.innerHTML = `
+                <div class="buscando">👀 Pedrinha escondida — mantendo rastro...</div>
+                <div class="movimento">Última posição: Copo ${copoAtual}</div>
+            `;
+        } else {
+            resultadoEl.innerHTML = `<div class="buscando">🔍 Aguardando pedrinha reaparecer...</div>`;
+        }
     }
 
     requestAnimationFrame(loopPrincipal);
 }
 
-// 🧠 DETECÇÃO — BOLINHA MAIS FORTE E VISÍVEL
-function detectarPedrinha() {
+// 🧠 DETECÇÃO — SÓ A PEDRINHA, NÃO CONFUNDE NADA
+function detectarPedrinha(calibracao) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -334,12 +333,31 @@ function detectarPedrinha() {
 
     let totalPontos = 0;
     let somaX = 0, somaY = 0;
+    let melhorPontuacao = 0;
+    let melhorX = 0, melhorY = 0;
+
+    // Limite de busca: só perto da última posição (evita confusão)
+    let limiteBusca = null;
+    if (!calibracao && estado.ultimaPosicao) {
+        limiteBusca = {
+            minX: Math.max(0, estado.ultimaPosicao.x - ALVO.raioBusca),
+            maxX: Math.min(canvas.width, estado.ultimaPosicao.x + ALVO.raioBusca)
+        };
+    }
 
     for (let i = 0; i < pixels.length; i += 4) {
+        const x = (i / 4) % canvas.width;
+        
+        // Fora da área de busca? Ignora
+        if (limiteBusca && (x < limiteBusca.minX || x > limiteBusca.maxX)) {
+            continue;
+        }
+
         const r = pixels[i];
         const g = pixels[i+1];
         const b = pixels[i+2];
 
+        // Filtro EXATO: só a cor da pedrinha
         const ehPedrinha = 
             r >= ALVO.rMin && r <= ALVO.rMax &&
             g >= ALVO.gMin && g <= ALVO.gMax &&
@@ -348,75 +366,72 @@ function detectarPedrinha() {
 
         if (ehPedrinha) {
             totalPontos++;
-            const x = (i / 4) % canvas.width;
             const y = Math.floor((i / 4) / canvas.width);
             somaX += x;
             somaY += y;
+            
+            const pontuacao = r - ((g + b) / 2);
+            if (pontuacao > melhorPontuacao) {
+                melhorPontuacao = pontuacao;
+                melhorX = x;
+                melhorY = y;
+            }
         }
     }
 
-    // ✅ PEDRINHA VISTA AGORA — marcação FORTE
-    if (totalPontos >= ALVO.minPontos) {
+    // Tamanho coerente?
+    if (totalPontos >= ALVO.minPontos && totalPontos <= ALVO.maxPontos) {
         const x = somaX / totalPontos;
         const y = somaY / totalPontos;
-        const confianca = Math.min(100, Math.round((totalPontos / 12) * 100));
+        const confianca = Math.min(100, Math.round((totalPontos / 10) * 100));
 
-        // 🔴 BOLINHA PRINCIPAL — GROSSA E BRILHANTE
+        // 🔴 BOLINHA — MARCAÇÃO FORTE
         ctx.shadowColor = '#ff0000';
-        ctx.shadowBlur = 30;
+        ctx.shadowBlur = 35;
         ctx.strokeStyle = '#ff0000';
         ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.arc(x, y, 32, 0, Math.PI * 2);
+        ctx.arc(x, y, 30, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.35)';
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
         ctx.fill();
-        
-        // Anel interno pra destaque
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(x, y, 18, 0, Math.PI * 2);
-        ctx.stroke();
         ctx.shadowBlur = 0;
 
-        return { vista: true, x, y, confianca };
+        return { x, y, confianca, tamanho: totalPontos, cor: melhorPontuacao };
     }
 
-    // ✅ NÃO VISTA AGORA — mostra ÚLTIMA POSIÇÃO VISTA (tracejada)
-    if (estado.pedrinhaAtual && !estado.posicaoFixa) {
-        const tempoDesdeVista = Date.now() - (estado.ultimaVistaReal?.tempo || 0);
-        const opacidade = tempoDesdeVista < ALVO.tempoSeguranca ? 0.7 : 0.3;
-        
-        ctx.strokeStyle = `rgba(255, 0, 0, ${opacidade})`;
+    // Mostra última posição se não encontrou agora
+    if (!calibracao && estado.ultimaPosicao && !estado.posicaoDefinitiva) {
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
         ctx.lineWidth = 5;
-        ctx.setLineDash([8, 6]);
+        ctx.setLineDash([6, 8]);
         ctx.beginPath();
-        ctx.arc(estado.pedrinhaAtual.x, estado.pedrinhaAtual.y, 32, 0, Math.PI * 2);
+        ctx.arc(estado.ultimaPosicao.x, estado.ultimaPosicao.y, 30, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
     }
 
-    // ✅ DEFINITIVO — BOLINHA FIXA E BRILHANDO FORTE
-    if (estado.posicaoFixa) {
+    // Marcação DEFINITIVA
+    if (estado.posicaoDefinitiva) {
         ctx.shadowColor = '#fbbf24';
-        ctx.shadowBlur = 40;
+        ctx.shadowBlur = 45;
         ctx.strokeStyle = '#fbbf24';
         ctx.lineWidth = 7;
         ctx.beginPath();
-        ctx.arc(estado.posicaoFixa.x, estado.posicaoFixa.y, 36, 0, Math.PI * 2);
+        ctx.arc(estado.posicaoDefinitiva.x, estado.posicaoDefinitiva.y, 35, 0, Math.PI * 2);
         ctx.stroke();
         ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
         ctx.fill();
         ctx.shadowBlur = 0;
     }
 
-    return { vista: false };
+    return null;
 }
 
 btn.parar.addEventListener('click', () => {
     estado.rastreando = false;
     estado.calibrando = false;
-    estado.posicaoFixa = null;
+    estado.posicaoDefinitiva = null;
     estado.copoFinal = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     resultadoEl.innerHTML = `<div class="erro">⏸️ PAUSADO</div>`;
@@ -450,9 +465,9 @@ document.getElementById('btnFechar').addEventListener('click', () => {
 btn.desligar.addEventListener('click', () => {
     if (estado.stream) estado.stream.getTracks().forEach(t => t.stop());
     estado.ligado = estado.calibrando = estado.calibrado = estado.rastreando = false;
-    estado.pedrinhaAtual = null;
-    estado.ultimaVistaReal = null;
-    estado.posicaoFixa = null;
+    estado.pedrinhaUnica = null;
+    estado.ultimaPosicao = null;
+    estado.posicaoDefinitiva = null;
     estado.rodadas = [];
 
     video.srcObject = null;
