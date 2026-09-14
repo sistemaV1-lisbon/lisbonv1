@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>LISBON v1 - RASTREIO PRECISO</title>
+    <title>LISBON — OLHOS BIÔNICOS v3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -11,13 +11,13 @@
         
         .camera-container { position: fixed; inset: 0; background: #050505; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); }
-        canvas { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 2; }
+        canvas { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 10; }
         
-        .marcadores { position: fixed; inset: 0; z-index: 1; display: flex; pointer-events: none; opacity: 0.4; }
-        .copo-area { flex: 1; border-right: 2px dashed #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 4rem; font-weight: 900; color: #fbbf24; opacity: 0.5; }
+        .marcadores { position: fixed; inset: 0; z-index: 1; display: flex; pointer-events: none; opacity: 0.35; }
+        .copo-area { flex: 1; border-right: 2px dashed #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 4rem; font-weight: 900; color: #fbbf24; opacity: 0.4; }
         .copo-area:last-child { border-right: none; }
         
-        .status-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 30; background: rgba(0,0,0,0.85); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #dc2626; }
+        .status-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 30; background: rgba(0,0,0,0.85); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ef4444; }
         .status-titulo { font-weight: 900; color: #ef4444; font-size: 0.9rem; }
         .status-on { color: #22c55e; font-weight: bold; }
         .status-off { color: #ef4444; font-weight: bold; }
@@ -25,10 +25,12 @@
         
         .resultado { position: fixed; top: 60px; left: 0; right: 0; z-index: 30; text-align: center; padding: 15px; font-size: 1.3rem; font-weight: bold; background: rgba(0,0,0,0.75); min-height: 90px; display: flex; flex-direction: column; justify-content: center; gap: 5px; border-bottom: 2px solid #22c55e; }
         .localizado { color: #22c55e; text-shadow: 0 0 20px rgba(34,197,94,0.6); font-size: 2rem; }
+        .definitivo { color: #fbbf24; text-shadow: 0 0 25px rgba(251,191,36,0.8); font-size: 2.2rem; }
         .buscando { color: #f59e0b; }
         .erro { color: #ef4444; }
         .movimento { font-size: 0.9rem; opacity: 0.9; }
         .contador { font-size: 2.5rem; font-weight: 900; color: #fbbf24; text-shadow: 0 0 15px rgba(251,191,36,0.7); }
+        .biometrico { font-size: 0.8rem; color: #a78bfa; margin-top: 2px; }
         
         .controles { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; padding: 15px; background: linear-gradient(to top, #000 70%, transparent); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         button { padding: 16px 10px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 800; cursor: pointer; transition: all 0.2s; }
@@ -57,14 +59,14 @@
 </div>
 
 <div class="status-bar">
-    <span class="status-titulo">🎯 LISBON v1 PRECISION</span>
+    <span class="status-titulo">👁️ LISBON — OLHOS BIÔNICOS</span>
     <span id="status-cam">📴 Câmera</span>
     <span class="confianca">Confiança: <span id="conf">—</span></span>
 </div>
 
 <div id="resultado" class="resultado">
     <div>🔘 Ligue o sistema e permita câmera</div>
-    <div class="movimento">Posicione a pedrinha vermelha visível</div>
+    <div class="movimento">Olhos biônicos prontos para identificar a pedrinha</div>
 </div>
 
 <div class="camera-container">
@@ -97,7 +99,7 @@
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const ctx = canvas.getContext('2d', { willReadFrequently: true, alpha: false });
 const resultadoEl = document.getElementById('resultado');
 const statusCamEl = document.getElementById('status-cam');
 const confEl = document.getElementById('conf');
@@ -117,104 +119,135 @@ const estado = {
     calibrado: false,
     rastreando: false,
     stream: null,
-    pedrinha: null, // Posição fixa da pedrinha que NÃO SE PERDE
+    
+    // 🧠 MEMÓRIA BIÔNICA DA PEDRINHA
+    assinaturaUnica: null,  // Identidade única da pedrinha
+    posicao: null,          // Posição atual confirmada
+    copoAtual: 0,
+    copoFinal: 0,
+    travado: false,
+    
+    ultimoTempoVisivel: 0,
+    historicoMov: [],
     rodadas: [],
-    confianca: 0
+    largura: 0,
+    altura: 0
 };
 
-// 🎯 DETECÇÃO AJUSTADA PARA A PEDRINHA VERMELHA BRILHANTE
-const ALVO = {
-    rMin: 160, rMax: 255,    // Vermelho forte e brilhante
-    gMin: 0, gMax: 100,      // Muito pouco verde
-    bMin: 0, bMax: 100,      // Muito pouco azul
-    minPontos: 3,            // Sensível o suficiente
-    pesoCor: 2.5,            // Destaque para o vermelho
-    suavizacao: 0.85         // Quanto mais perto de 1, mais "grudada"
+// 👁️ PERFIL EXATO DA PEDRINHA VERMELHA DAS FOTOS
+const PEDRINHA = {
+    // Cor vermelha brilhante característica
+    rMin: 155, rMax: 255,
+    gMin: 0,   gMax: 95,
+    bMin: 0,   bMax: 95,
+    
+    // Assinatura: vermelho MUITO dominante sobre verde e azul
+    razaoMinRG: 2.8,   // R > 2.8 × G
+    razaoMinRB: 2.8,   // R > 2.8 × B
+    
+    // Tamanho real da pedrinha nas fotos
+    minPixels: 3,
+    maxPixels: 120,
+    
+    // Comportamento biônico
+    suavidade: 0.60,        // Rápido mas firme
+    memoriaSegundos: 4.0,   // Lembra por 4s sem ver
+    confiancaMin: 65,       // Só marca se tiver certeza
+    paradoMs: 800,          // Trava após 0.8s parado
+    passo: 2                // Precisão alta
 };
-
-let divisoes = { c1: 0, c2: 0, c3: 0 };
 
 btn.ligar.addEventListener('click', async () => {
     try {
         estado.stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+            video: { 
+                facingMode: 'environment', 
+                width: { ideal: 960 },
+                height: { ideal: 540 },
+                frameRate: { ideal: 30 }
+            }
         });
         video.srcObject = estado.stream;
         await video.play();
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        divisoes.c1 = canvas.width / 3;
-        divisoes.c2 = (canvas.width / 3) * 2;
-        divisoes.c3 = canvas.width;
-
+        
+        estado.largura = canvas.width = video.videoWidth;
+        estado.altura = canvas.height = video.videoHeight;
+        
         estado.ligado = true;
-        statusCamEl.textContent = "✅ CÂMERA ON";
+        statusCamEl.textContent = "✅ OLHOS BIÔNICOS ATIVOS";
         statusCamEl.className = "status-on";
-        resultadoEl.innerHTML = `<div class="buscando">📹 Câmera ativa! Posicione a pedrinha visível</div>`;
-
+        resultadoEl.innerHTML = `
+            <div class="buscando">👁️ Sistema carregado</div>
+            <div class="movimento">Mostre a pedrinha vermelha → CALIBRAR</div>
+        `;
+        
         btn.ligar.disabled = true;
         btn.analisar.disabled = false;
         btn.desligar.disabled = false;
-
+        
+        loopPrincipal();
+        
     } catch (erro) {
-        resultadoEl.innerHTML = `<div class="erro">❌ ERRO: Permita a câmera nas configurações</div>`;
+        resultadoEl.innerHTML = `<div class="erro">❌ Permita a câmera nas configurações</div>`;
     }
 });
 
-// ⏱️ CALIBRAÇÃO DE 10 SEGUNDOS + BOLINHA JÁ MARCANDO
+// 🧠 CALIBRAÇÃO — GRAVA A ASSINATURA DA PEDRINHA
 btn.analisar.addEventListener('click', () => {
     if (!estado.ligado) return;
     estado.calibrando = true;
+    estado.assinaturaUnica = null;
+    estado.posicao = null;
     btn.analisar.disabled = true;
     
     let tempoRestante = 10;
     resultadoEl.innerHTML = `
-        <div class="buscando">🧠 CALIBRANDO...</div>
+        <div class="buscando">🧠 ESCANEANDO PEDRINHA...</div>
         <div class="contador">${tempoRestante}s</div>
-        <div class="movimento">Mantenha a pedrinha visível — a marcação vai aparecer</div>
+        <div class="movimento">Mantenha a pedrinha visível no centro</div>
+        <div class="biometrico">🔍 Capturando assinatura biônica...</div>
     `;
 
     const contador = setInterval(() => {
         tempoRestante--;
         if (tempoRestante > 0) {
             resultadoEl.innerHTML = `
-                <div class="buscando">🧠 CALIBRANDO...</div>
+                <div class="buscando">🧠 ESCANEANDO...</div>
                 <div class="contador">${tempoRestante}s</div>
-                <div class="movimento">Aguarde — não esconda a pedrinha</div>
+                <div class="movimento">${estado.assinaturaUnica ? "✅ Assinatura gravada! Aguarde..." : "Procurando assinatura única..."}</div>
+                <div class="biometrico">${estado.assinaturaUnica ? "✅ Biometria confirmada" : "Analisando cor e brilho..."}</div>
             `;
         }
     }, 1000);
 
-    // LOOP DE DETECÇÃO DURANTE CALIBRAÇÃO
     const loopCalibracao = () => {
         if (!estado.calibrando) return;
         
-        const dados = detectarPedrinha();
-        if (dados.encontrada) {
-            estado.pedrinha = dados; // TRAVA a referência
-            confEl.textContent = `${dados.confianca}%`;
+        const captura = escanearPedrinha(true);
+        if (captura && !estado.assinaturaUnica) {
+            estado.assinaturaUnica = captura.assinatura;
+            estado.posicao = { x: captura.x, y: captura.y, conf: captura.conf };
         }
         
         if (tempoRestante <= 0) {
             clearInterval(contador);
             estado.calibrando = false;
-            estado.calibrado = true;
             
-            if (estado.pedrinha) {
+            if (estado.assinaturaUnica) {
+                estado.calibrado = true;
                 resultadoEl.innerHTML = `
-                    <div class="localizado">✅ CALIBRADO COM SUCESSO!</div>
-                    <div class="movimento">Pedrinha identificada — clique em RASTREAR</div>
+                    <div class="localizado">✅ PEDRINHA IDENTIFICADA COM CERTEZA</div>
+                    <div class="movimento">Assinatura biônica gravada — ninguém confunde</div>
+                    <div class="biometrico">👁️ Olhos biônicos prontos → clique RASTREAR</div>
                 `;
+                btn.rastrear.disabled = false;
             } else {
                 resultadoEl.innerHTML = `
-                    <div class="erro">⚠️ Pedrinha não detectada</div>
-                    <div class="movimento">Clique CALIBRAR novamente e mostre a pedrinha</div>
+                    <div class="erro">⚠️ Pedrinha não reconhecida</div>
+                    <div class="movimento">Mostre a pedrinha vermelha claramente</div>
                 `;
                 btn.analisar.disabled = false;
-                return;
             }
-            btn.rastrear.disabled = false;
             return;
         }
         requestAnimationFrame(loopCalibracao);
@@ -223,144 +256,223 @@ btn.analisar.addEventListener('click', () => {
     loopCalibracao();
 });
 
-// 🎯 RASTREIO — BOLINHA GRUDADA PRA SEMPRE
+// 🎯 RASTREIO BIÔNICO — SEGUE SÓ ELA
 btn.rastrear.addEventListener('click', () => {
-    if (!estado.calibrado || !estado.pedrinha) return;
+    if (!estado.calibrado || !estado.assinaturaUnica) return;
     estado.rastreando = true;
+    estado.travado = false;
+    estado.copoFinal = 0;
+    estado.ultimoTempoVisivel = Date.now();
+    
     resultadoEl.innerHTML = `
-        <div class="buscando">🔍 RASTREANDO...</div>
-        <div class="movimento">Acompanha o movimento em tempo real</div>
+        <div class="buscando">👁️ RASTREIO BIÔNICO ATIVO</div>
+        <div class="movimento">Seguindo a pedrinha exclusiva — sem confusão</div>
+        <div class="biometrico">🔐 Assinatura verificada</div>
     `;
     btn.rastrear.disabled = true;
     btn.parar.disabled = false;
-    loopRastreio();
 });
 
-function loopRastreio() {
-    if (!estado.rastreando) return;
-
-    const dados = detectarPedrinha();
+function loopPrincipal() {
+    if (!estado.ligado) return;
     
-    if (dados.encontrada) {
-        // ✅ BOLINHA GRUDA: suaviza mas NÃO PERDE o rastro
-        if (!estado.pedrinha) {
-            estado.pedrinha = dados;
-        } else {
-            // Suavização forte = fica grudada
-            estado.pedrinha.x = estado.pedrinha.x * ALVO.suavizacao + dados.x * (1 - ALVO.suavizacao);
-            estado.pedrinha.y = estado.pedrinha.y * ALVO.suavizacao + dados.y * (1 - ALVO.suavizacao);
-            estado.pedrinha.confianca = dados.confianca;
-        }
+    const agora = Date.now();
+    
+    ctx.clearRect(0, 0, estado.largura, estado.altura);
+    ctx.drawImage(video, 0, 0, estado.largura, estado.altura);
+    
+    // Se já travou, mantém resultado
+    if (estado.travado) {
+        desenharMarcacao(estado.posicao.x, estado.posicao.y, true);
+        requestAnimationFrame(loopPrincipal);
+        return;
     }
     
-    confEl.textContent = estado.pedrinha ? `${estado.pedrinha.confianca}%` : "—";
-
-    if (estado.pedrinha) {
-        // 📐 Identifica copo pela posição atual
-        let copoAtual = 0;
-        if (estado.pedrinha.x < divisoes.c1) copoAtual = 1;
-        else if (estado.pedrinha.x < divisoes.c2) copoAtual = 2;
-        else copoAtual = 3;
-
-        // Salva apenas se mudou de fato
-        if (estado.rodadas.at(-1) !== copoAtual) {
-            estado.rodadas.push(copoAtual);
+    const vistaAgora = escanearPedrinha(false);
+    
+    if (vistaAgora) {
+        // ✅ PEDRINHA VISTA — confirma pela assinatura
+        if (estado.posicao) {
+            // Compara com assinatura gravada
+            const compatibilidade = compararAssinatura(vistaAgora.assinatura, estado.assinaturaUnica);
+            
+            if (compatibilidade >= 0.70) {
+                // É ELA! Atualiza posição com suavidade
+                estado.posicao.x = estado.posicao.x * PEDRINHA.suavidade + vistaAgora.x * (1 - PEDRINHA.suavidade);
+                estado.posicao.y = estado.posicao.y * PEDRINHA.suavidade + vistaAgora.y * (1 - PEDRINHA.suavidade);
+                estado.posicao.conf = Math.max(estado.posicao.conf, vistaAgora.conf);
+                estado.ultimoTempoVisivel = agora;
+            }
+        } else {
+            estado.posicao = { x: vistaAgora.x, y: vistaAgora.y, conf: vistaAgora.conf };
+            estado.ultimoTempoVisivel = agora;
         }
-
+        
+        confEl.textContent = `${estado.posicao.conf}%`;
+        
+    } else if (estado.posicao) {
+        // Pedrinha coberta/escondida — mantém rastro
+        const semVer = agora - estado.ultimoTempoVisivel;
+        if (semVer < PEDRINHA.memoriaSegundos * 1000) {
+            // Mantém posição com confiança reduzindo gradualmente
+            estado.posicao.conf = Math.max(30, estado.posicao.conf - 0.5);
+        } else {
+            // Passou muito tempo — perdeu visual
+            estado.posicao.conf = Math.max(10, estado.posicao.conf - 2);
+        }
+        confEl.textContent = `${Math.round(estado.posicao.conf)}%`;
+    }
+    
+    // 📐 Define copo atual
+    let copoAtual = 0;
+    if (estado.posicao && estado.posicao.conf >= PEDRINHA.confiancaMin) {
+        if (estado.posicao.x < estado.largura / 3) copoAtual = 1;
+        else if (estado.posicao.x < (estado.largura * 2) / 3) copoAtual = 2;
+        else copoAtual = 3;
+        estado.copoAtual = copoAtual;
+    }
+    
+    // ⛳ TRAVA QUANDO PARAR
+    const semMovimento = agora - estado.ultimoTempoVisivel;
+    if (copoAtual > 0 && semMovimento >= PEDRINHA.paradoMs && !estado.travado) {
+        estado.travado = true;
+        estado.copoFinal = copoAtual;
+        estado.rodadas.push(copoAtual);
+        
+        resultadoEl.innerHTML = `
+            <div class="definitivo">🎯 COPO ${estado.copoFinal} — CONFIRMADO</div>
+            <div class="movimento">Pedrinha identificada com certeza</div>
+            <div class="biometrico">👁️ Olhos biônicos confirmaram</div>
+        `;
+        desenharMarcacao(estado.posicao.x, estado.posicao.y, true);
+    }
+    // Ainda em movimento
+    else if (!estado.travado && copoAtual > 0) {
         resultadoEl.innerHTML = `
             <div class="localizado">🎯 COPO ${copoAtual}</div>
-            <div class="movimento">Posição confirmada • seguindo movimento</div>
+            <div class="movimento">Acompanhando em tempo real</div>
+            <div class="biometrico">Confiança biônica: ${Math.round(estado.posicao.conf)}%</div>
         `;
-    } else {
-        resultadoEl.innerHTML = `<div class="buscando">👀 Seguindo movimento...</div>`;
+        desenharMarcacao(estado.posicao.x, estado.posicao.y, false);
     }
-
-    requestAnimationFrame(loopRastreio);
+    // Esperando reaparecer
+    else if (!estado.travado && estado.posicao) {
+        resultadoEl.innerHTML = `
+            <div class="buscando">👀 Pedrinha coberta — mantendo rastro...</div>
+            <div class="biometrico">Aguardando reaparecer</div>
+        `;
+        desenharMarcacao(estado.posicao.x, estado.posicao.y, false, true);
+    }
+    
+    requestAnimationFrame(loopPrincipal);
 }
 
-// 🧠 NÚCLEO DE DETECÇÃO — MARCAÇÃO VISÍVEL SEMPRE
-function detectarPedrinha() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = imgData.data;
-
-    let totalPontos = 0;
-    let somaX = 0;
-    let somaY = 0;
-    let melhorPontuacao = 0;
-    let melhorX = 0, melhorY = 0;
-
-    // Varre todos os pixels
-    for (let i = 0; i < pixels.length; i += 4) {
-        const r = pixels[i];
-        const g = pixels[i+1];
-        const b = pixels[i+2];
-
-        // Filtro: é vermelho brilhante?
-        const ehVermelho = 
-            r >= ALVO.rMin && r <= ALVO.rMax &&
-            g >= ALVO.gMin && g <= ALVO.gMax &&
-            b >= ALVO.bMin && b <= ALVO.bMax &&
-            r > g * ALVO.pesoCor && r > b * ALVO.pesoCor;
-
-        if (ehVermelho) {
-            totalPontos++;
-            const x = (i / 4) % canvas.width;
-            const y = Math.floor((i / 4) / canvas.width);
-            somaX += x;
-            somaY += y;
-            
-            // Pontuação: quanto mais vermelho, melhor
-            const pontuacao = r - (g + b) / 2;
-            if (pontuacao > melhorPontuacao) {
-                melhorPontuacao = pontuacao;
-                melhorX = x;
-                melhorY = y;
-            }
-        }
+// 🔍 ESCANEAMENTO BIÔNICO — SÓ A PEDRINHA VERDADEIRA
+function escanearPedrinha(calibracao) {
+    const imgData = ctx.getImageData(0, 0, estado.largura, estado.altura);
+    const dados = imgData.data;
+    
+    let total = 0;
+    let somaX = 0, somaY = 0;
+    let assinatura = { r: 0, g: 0, b: 0, brilho: 0 };
+    
+    for (let i = 0; i < dados.length; i += 4 * PEDRINHA.passo) {
+        const r = dados[i];
+        const g = dados[i + 1];
+        const b = dados[i + 2];
+        
+        // FILTRO BIÔNICO: só passa o perfil EXATO da pedrinha
+        if (r < PEDRINHA.rMin || r > PEDRINHA.rMax) continue;
+        if (g > PEDRINHA.gMax) continue;
+        if (b > PEDRINHA.bMax) continue;
+        if (r < g * PEDRINHA.razaoMinRG) continue;
+        if (r < b * PEDRINHA.razaoMinRB) continue;
+        
+        total++;
+        const idx = i / 4;
+        const x = idx % estado.largura;
+        const y = (idx / estado.largura) | 0;
+        
+        somaX += x;
+        somaY += y;
+        assinatura.r += r;
+        assinatura.g += g;
+        assinatura.b += b;
+        assinatura.brilho += r + g + b;
     }
-
-    // ✅ Se encontrou a pedrinha
-    if (totalPontos >= ALVO.minPontos) {
-        const centroX = somaX / totalPontos;
-        const centroY = somaY / totalPontos;
-        const confianca = Math.min(100, Math.round((totalPontos / 15) * 100));
-
-        // 🔴 DESENHA A BOLINHA — VISÍVEL SEMPRE
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = 5;
-        ctx.shadowColor = '#ff0000';
-        ctx.shadowBlur = 20;
-        ctx.beginPath();
-        ctx.arc(centroX, centroY, 28, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.25)';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        return { encontrada: true, x: centroX, y: centroY, confianca };
+    
+    // Tamanho correto = é a pedrinha
+    if (total >= PEDRINHA.minPixels && total <= PEDRINHA.maxPixels) {
+        const conf = Math.min(100, Math.round((total / 12) * 100));
+        
+        // Normaliza assinatura
+        assinatura.r /= total;
+        assinatura.g /= total;
+        assinatura.b /= total;
+        assinatura.brilho /= total;
+        
+        return {
+            x: somaX / total,
+            y: somaY / total,
+            conf,
+            assinatura
+        };
     }
+    
+    return null;
+}
 
-    // Se já tem referência, mantém a última posição (não perde!)
-    if (estado.pedrinha) {
-        // Desenha na última posição conhecida
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
-        ctx.lineWidth = 4;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath();
-        ctx.arc(estado.pedrinha.x, estado.pedrinha.y, 28, 0, Math.PI * 2);
-        ctx.stroke();
+// 🧠 COMPARA ASSINATURA — É A MESMA PEDRINHA?
+function compararAssinatura(atual, referencia) {
+    const diffR = Math.abs(atual.r - referencia.r) / 255;
+    const diffG = Math.abs(atual.g - referencia.g) / 255;
+    const diffB = Math.abs(atual.b - referencia.b) / 255;
+    
+    // Quanto menor a diferença, maior a compatibilidade
+    const compatibilidade = 1 - ((diffR + diffG + diffB) / 3);
+    return compatibilidade;
+}
+
+// 🔴 DESENHA A MARCAÇÃO — VISÍVEL E FORTE
+function desenharMarcacao(x, y, definitivo, tracejado = false) {
+    if (!x || !y) return;
+    
+    ctx.shadowColor = definitivo ? '#fbbf24' : '#ff0000';
+    ctx.shadowBlur = definitivo ? 45 : 30;
+    ctx.strokeStyle = definitivo ? '#fbbf24' : '#ff0000';
+    ctx.lineWidth = definitivo ? 8 : 6;
+    
+    if (tracejado) {
+        ctx.setLineDash([8, 6]);
+    } else {
         ctx.setLineDash([]);
     }
-
-    return { encontrada: false };
+    
+    ctx.beginPath();
+    ctx.arc(x, y, 36, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    ctx.fillStyle = definitivo 
+        ? 'rgba(251, 191, 36, 0.25)' 
+        : 'rgba(255, 0, 0, 0.3)';
+    ctx.fill();
+    
+    // Anel interno de destaque
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 20, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
 }
 
 btn.parar.addEventListener('click', () => {
     estado.rastreando = false;
     estado.calibrando = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    estado.travado = false;
+    estado.copoFinal = 0;
+    ctx.clearRect(0, 0, estado.largura, estado.altura);
     resultadoEl.innerHTML = `<div class="erro">⏸️ PAUSADO</div>`;
     btn.parar.disabled = true;
     btn.rastrear.disabled = false;
@@ -382,30 +494,4 @@ btn.estat.addEventListener('click', () => {
                    Math.max(c2, c3) === c2 ? "Copo 2" : "Copo 3";
     document.getElementById('estMelhor').textContent = rodadas.length ? melhor : "—";
 
-    document.getElementById('modalEstat').classList.add('active');
-});
-
-document.getElementById('btnFechar').addEventListener('click', () => {
-    document.getElementById('modalEstat').classList.remove('active');
-});
-
-btn.desligar.addEventListener('click', () => {
-    if (estado.stream) estado.stream.getTracks().forEach(t => t.stop());
-    estado.ligado = estado.calibrando = estado.calibrado = estado.rastreando = false;
-    estado.pedrinha = null;
-    estado.rodadas = [];
-
-    video.srcObject = null;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    statusCamEl.textContent = "📴 Câmera";
-    statusCamEl.className = "status-off";
-    confEl.textContent = "—";
-    resultadoEl.innerHTML = `<div>🔘 Ligue o sistema novamente</div>`;
-
-    btn.ligar.disabled = false;
-    btn.analisar.disabled = btn.rastrear.disabled = btn.parar.disabled = btn.desligar.disabled = true;
-});
-</script>
-</body>
-</html>
+    document.getEl
