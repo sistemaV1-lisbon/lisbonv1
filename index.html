@@ -3,302 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LISBON — MOVIMENTO REAL</title>
+    <title>DevTools — Thimbles Game</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: white; }
-        
-        .camera-container { position: fixed; inset: 0; }
-        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); }
-        canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-        
-        /* 🟦 CAIXA QUE ANDA JUNTO */
-        .marcador-container {
+        html, body { height: 100%; overflow: hidden; font-family: 'Consolas', 'Courier New', monospace; color: #d4d4d4; background: #1e1e1e; }
+
+        /* 🖥️ TELA PRINCIPAL — estilo DevTools */
+        .dev-window {
             position: fixed;
-            z-index: 15;
-            pointer-events: none;
-            transition: left 0.05s linear, right 0.05s linear;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
         }
-        
-        .caixa-hack {
-            position: absolute;
-            top: 12%;
-            bottom: 12%;
-            left: 8%;
-            right: 8%;
-            background: rgba(59, 130, 246, 0.22);
-            border: 3px solid #3b82f6;
-            border-radius: 12px;
-            box-shadow: 
-                0 0 20px rgba(59, 130, 246, 0.5),
-                inset 0 0 12px rgba(59, 130, 246, 0.2);
-            animation: brilho 1s ease-in-out infinite alternate;
+
+        /* Barra superior */
+        .dev-header {
+            background: #2d2d2d;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #444;
         }
-        
-        /* 🔤 TEXTO EM CIMA DA CAIXA — SEMPRE JUNTO */
-        .texto-hack {
-            position: absolute;
-            top: -32px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
+        .dev-title { font-size: 13px; color: #999; }
+        .dev-tabs { display: flex; gap: 4px; }
+        .tab {
+            padding: 6px 14px;
+            font-size: 12px;
+            background: #383838;
+            border-radius: 4px 4px 0 0;
+            color: #aaa;
+        }
+        .tab.active { background: #1e1e1e; color: #fff; border-top: 1px solid #555; border-left: 1px solid #555; border-right: 1px solid #555; }
+
+        /* Área do código */
+        .dev-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        .dev-line-numbers {
+            padding: 10px 8px;
+            background: #252526;
+            color: #858585;
             font-size: 13px;
-            font-weight: bold;
-            padding: 5px 12px;
-            border-radius: 6px;
-            border: 1px solid #4ade80;
-            white-space: nowrap;
-            box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+            line-height: 1.6;
+            text-align: right;
+            user-select: none;
         }
-        
-        @keyframes brilho {
-            from { box-shadow: 0 0 20px rgba(59,130,246,0.5), inset 0 0 12px rgba(59,130,246,0.2); }
-            to { box-shadow: 0 0 32px rgba(59,130,246,0.7), inset 0 0 18px rgba(59,130,246,0.3); }
-        }
-        
-        .info {
-            position: fixed;
-            bottom: 90px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            z-index: 30;
+        .dev-code {
+            flex: 1;
             padding: 10px;
-            font-size: 1rem;
-            background: rgba(0,0,0,0.6);
+            font-size: 13px;
+            line-height: 1.6;
+            overflow: auto;
+            background: #1e1e1e;
         }
-        .ativo { color: #4ade80; text-shadow: 0 0 8px rgba(74,222,128,0.5); }
-        .esperando { color: #fbbf24; }
-        
-        .botoes {
+        .code-line { display: flex; flex-wrap: wrap; }
+        .attr { color: #9cdcfe; }
+        .name { color: #ce9178; }
+        .value { color: #a5d6ff; }
+        .equal { color: #d4d4d4; }
+        .highlight-line {
+            background: rgba(59, 130, 246, 0.2);
+            border-left: 2px solid #3b82f6;
+            margin: 0 -10px;
+            padding: 0 10px;
+        }
+
+        /* 🎯 ÁREA DE VISUALIZAÇÃO + MARCADOR */
+        .camera-container {
+            position: fixed;
+            top: 130px;
+            left: 10px;
+            right: 10px;
+            bottom: 100px;
+            border: 2px solid #444;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #000;
+            z-index: 5;
+        }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); }
+        canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+        /* 🔵 CAIXA MARCADORA */
+        .marker-box {
+            position: absolute;
+            top: 10%;
+            bottom: 10%;
+            left: 5%;
+            right: 5%;
+            border: 3px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), inset 0 0 10px rgba(59, 130, 246, 0.2);
+            animation: pulse 1s ease-in-out infinite alternate;
+            display: none;
+            z-index: 15;
+        }
+        @keyframes pulse {
+            from { box-shadow: 0 0 20px rgba(59,130,246,0.5), inset 0 0 10px rgba(59,130,246,0.2); }
+            to { box-shadow: 0 0 30px rgba(59,130,246,0.7), inset 0 0 15px rgba(59,130,246,0.35); }
+        }
+
+        /* Status */
+        .status-bar {
+            position: fixed;
+            bottom: 55px;
+            left: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.75);
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 20;
+        }
+        .status-on { color: #4ade80; }
+        .status-wait { color: #fbbf24; }
+
+        /* Botões */
+        .controls {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            z-index: 30;
-            padding: 15px;
-            background: linear-gradient(to top, #000 70%, transparent);
+            padding: 10px;
+            background: #252526;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 8px;
+            z-index: 25;
         }
         button {
-            padding: 14px 8px;
+            padding: 10px 6px;
             border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
+            border-radius: 6px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
-            font-family: 'Courier New', monospace;
+            font-family: inherit;
         }
-        button:disabled { opacity: 0.3; cursor: not-allowed; }
-        .ligar { background: #16a34a; color: #000; }
-        .fixar { background: #3b82f6; color: #fff; }
-        .desligar { background: #1f2937; border: 2px solid #ef4444; color: #fff; }
+        button:disabled { opacity: 0.35; cursor: not-allowed; }
+        .btn-start { background: #16a34a; color: #000; }
+        .btn-lock { background: #3b82f6; color: #fff; }
+        .btn-stop { background: #ef4444; color: #fff; }
     </style>
 </head>
 <body>
 
-<!-- 🟦 MARCADOR COMPLETO — ANDA + TEXTO JUNTO -->
-<div class="marcador-container" id="marcador" style="display:none;">
-    <div class="texto-hack">button.thimbles-game__thimble 99 = 333 69</div>
-    <div class="caixa-hack"></div>
+<!-- 🖥️ FERRAMENTA DE DESENVOLVEDOR -->
+<div class="dev-window">
+    <div class="dev-header">
+        <div class="dev-tabs">
+            <div class="tab active">Elements</div>
+            <div class="tab">Console</div>
+            <div class="tab">Sources</div>
+        </div>
+        <div class="dev-title">button.thimbles-game__thimble — DevTools</div>
+    </div>
+
+    <div class="dev-body">
+        <div class="dev-line-numbers">
+            1<br>2<br>3<br>4<br>5<br>6<br>7<br>8
+        </div>
+        <div class="dev-code">
+            <div class="code-line">&lt;<span class="attr">div</span> <span class="name">class</span>=<span class="value">"game-container"</span>&gt;</div>
+            <div class="code-line">&nbsp;&nbsp;&lt;<span class="attr">div</span> <span class="name">id</span>=<span class="value">"game-board"</span>&gt;</div>
+            <div class="code-line highlight-line">&nbsp;&nbsp;&nbsp;&nbsp;&lt;<span class="attr">button</span> <span class="name">class</span>=<span class="value">"thimbles-game__thimble"</span> <span class="name">data-id</span>=<span class="value">"99"</span>&gt;</div>
+            <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="equal">→ 99 = 333 69 ✅ TARGET LOCKED</span></div>
+            <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&lt;/<span class="attr">button</span>&gt;</div>
+            <div class="code-line">&nbsp;&nbsp;&lt;/<span class="attr">div</span>&gt;</div>
+            <div class="code-line">&lt;/<span class="attr">div</span>&gt;</div>
+        </div>
+    </div>
 </div>
 
-<div class="camera-container">
+<!-- 📷 ÁREA DE DETECÇÃO -->
+<div class="camera-container" id="camContainer">
     <video id="video" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
+    <div class="marker-box" id="markerBox"></div>
 </div>
 
-<div id="info" class="info">
-    <div class="esperando">Ligue → mostre a pedrinha vermelha</div>
+<div class="status-bar" id="statusBar">
+    <span class="status-wait">⏳ Aguardando inicialização...</span>
 </div>
 
-<div class="botoes">
-    <button id="btnLigar" class="ligar">🔘 LIGAR</button>
-    <button id="btnFixar" class="fixar" disabled>🎯 SEGUIR</button>
-    <button id="btnDesligar" class="desligar" disabled>⭕ DESLIGAR</button>
+<div class="controls">
+    <button class="btn-start" id="btnStart">▶️ INICIAR</button>
+    <button class="btn-lock" id="btnLock" disabled>🔒 FIXAR</button>
+    <button class="btn-stop" id="btnStop" disabled>⏹️ PARAR</button>
 </div>
 
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true, alpha: false });
-const marcadorEl = document.getElementById('marcador');
-const infoEl = document.getElementById('info');
+const markerBox = document.getElementById('markerBox');
+const statusBar = document.getElementById('statusBar');
 
-const btn = {
-    ligar: document.getElementById('btnLigar'),
-    fixar: document.getElementById('btnFixar'),
-    desligar: document.getElementById('btnDesligar')
-};
+const btnStart = document.getElementById('btnStart');
+const btnLock = document.getElementById('btnLock');
+const btnStop = document.getElementById('btnStop');
 
-const estado = {
-    ligado: false,
+const state = {
+    running: false,
+    locked: false,
     stream: null,
-    seguindo: false,    // Modo seguir: acompanha o copo
     x: 0, y: 0,
-    visivel: false,
-    largura: 0, altura: 0
+    visible: false,
+    width: 0, height: 0
 };
 
-// 🔴 PERFIL DA PEDRINHA
-const PEDRINHA = {
+// 🔴 PERFIL DA PEDRINHA VERMELHA
+const TARGET = {
     rMin: 145, rMax: 255,
-    gMin: 0,   gMax: 110,
-    bMin: 0,   bMax: 110,
-    pesoVermelho: 2.2,
+    gMin: 0, gMax: 110,
+    bMin: 0, bMax: 110,
+    weightRed: 2.2,
     minPts: 2,
     maxPts: 180,
-    passo: 3
+    step: 3
 };
 
-btn.ligar.addEventListener('click', async () => {
+btnStart.addEventListener('click', async () => {
     try {
-        estado.stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'environment',
-                width: { ideal: 640 },
-                height: { ideal: 480 },
-                frameRate: { ideal: 30 }
-            }
+        state.stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
         });
-        video.srcObject = estado.stream;
+        video.srcObject = state.stream;
         await video.play();
-        
-        estado.largura = canvas.width = video.videoWidth;
-        estado.altura = canvas.height = video.videoHeight;
-        estado.ligado = true;
-        estado.seguindo = false;
-        
-        infoEl.innerHTML = `<div class="ativo">✅ SISTEMA ATIVO — mostre a pedrinha</div>`;
-        btn.ligar.disabled = true;
-        btn.fixar.disabled = true;
-        btn.desligar.disabled = false;
-        
+
+        state.width = canvas.width = video.videoWidth || 640;
+        state.height = canvas.height = video.videoHeight || 480;
+        state.running = true;
+        state.locked = false;
+
+        statusBar.innerHTML = '<span class="status-wait">🔍 Procurando alvo...</span>';
+        btnStart.disabled = true;
+        btnLock.disabled = true;
+        btnStop.disabled = false;
+
         loop();
-        
-    } catch {
-        infoEl.innerHTML = `<div style="color:#ef4444">❌ Permita a câmera</div>`;
+    } catch (err) {
+        statusBar.innerHTML = '<span style="color:#ef4444">❌ Permita acesso à câmera</span>';
     }
 });
 
-// 🎯 ATIVA O SEGUIMENTO — não trava, acompanha!
-btn.fixar.addEventListener('click', () => {
-    if (!estado.visivel) return;
-    
-    estado.seguindo = true;
-    btn.fixar.disabled = true;
-    btn.fixar.textContent = "✅ ACOMPANHANDO";
-    
-    infoEl.innerHTML = `<div class="ativo">🎯 SEGUINDO O MOVIMENTO — a caixa vai junto!</div>`;
+btnLock.addEventListener('click', () => {
+    if (!state.visible) return;
+    state.locked = true;
+    btnLock.disabled = true;
+    btnLock.textContent = '✅ FIXADO';
+    statusBar.innerHTML = '<span class="status-on">🎯 ALVO BLOQUEADO — button.thimbles-game__thimble 99 = 333 69</span>';
+});
+
+btnStop.addEventListener('click', () => {
+    if (state.stream) state.stream.getTracks().forEach(t => t.stop());
+    state.running = false;
+    state.locked = false;
+    state.visible = false;
+    markerBox.style.display = 'none';
+    statusBar.innerHTML = '<span class="status-wait">⏳ Aguardando...</span>';
+    btnStart.disabled = false;
+    btnLock.disabled = true;
+    btnLock.textContent = '🔒 FIXAR';
+    btnStop.disabled = true;
 });
 
 function loop() {
-    if (!estado.ligado) return;
-    
-    ctx.clearRect(0, 0, estado.largura, estado.altura);
-    ctx.drawImage(video, 0, 0, estado.largura, estado.altura);
-    
-    const achou = detectar();
-    
-    if (achou) {
-        estado.x = achou.x;
-        estado.y = achou.y;
-        estado.visivel = true;
-        
-        // 📐 Calcula qual copo e POSICIONA a CAIXA
-        const larguraTotal = estado.largura;
-        let posEsq, posDir;
-        
-        if (estado.x < larguraTotal / 3) {
-            // Copo 1
-            posEsq = 0;
-            posDir = (larguraTotal / 3) / larguraTotal * 100;
-        } else if (estado.x < (larguraTotal * 2) / 3) {
-            // Copo 2
-            posEsq = (larguraTotal / 3) / larguraTotal * 100;
-            posDir = (larguraTotal * 2 / 3) / larguraTotal * 100;
-        } else {
-            // Copo 3
-            posEsq = (larguraTotal * 2 / 3) / larguraTotal * 100;
-            posDir = 100;
-        }
-        
-        // ✅ COLOCAR CAIXA EXATAMENTE EM CIMA DO COPO — SEMPRE JUNTO
-        marcadorEl.style.display = 'block';
-        marcadorEl.style.left = `${posEsq}%`;
-        marcadorEl.style.right = `${100 - posDir}%`;
-        
-        if (!estado.seguindo) {
-            infoEl.innerHTML = `<div class="ativo">👁️ PEDRINHA DETECTADA — clique SEGUIR</div>`;
-            btn.fixar.disabled = false;
-        }
-        
-    } else {
-        estado.visivel = false;
-        
-        if (!estado.seguindo) {
-            marcadorEl.style.display = 'none';
-            infoEl.innerHTML = `<div class="esperando">👀 Pedrinha fora de vista — mostre novamente</div>`;
-            btn.fixar.disabled = true;
-        }
-        // Se já ativou o SEGUIR, NÃO ESCONDE — mantém a última posição conhecida
+    if (!state.running) return;
+
+    ctx.clearRect(0, 0, state.width, state.height);
+    ctx.drawImage(video, 0, 0, state.width, state.height);
+
+    if (state.locked) {
+        requestAnimationFrame(loop);
+        return;
     }
-    
+
+    const found = detect();
+
+    if (found) {
+        state.x = found.x;
+        state.y = found.y;
+        state.visible = true;
+
+        // Posiciona caixa no copo correto
+        const third = state.width / 3;
+        let leftPct, rightPct;
+
+        if (found.x < third) {
+            leftPct = 5; rightPct = 65;
+        } else if (found.x < third * 2) {
+            leftPct = 35; rightPct = 35;
+        } else {
+            leftPct = 65; rightPct = 5;
+        }
+
+        markerBox.style.display = 'block';
+        markerBox.style.left = `${leftPct}%`;
+        markerBox.style.right = `${rightPct}%`;
+
+        statusBar.innerHTML = '<span class="status-on">✅ ALVO DETECTADO — clique FIXAR</span>';
+        btnLock.disabled = false;
+    } else {
+        state.visible = false;
+        if (!state.locked) {
+            markerBox.style.display = 'none';
+            statusBar.innerHTML = '<span class="status-wait">👀 Alvo fora de vista...</span>';
+            btnLock.disabled = true;
+        }
+    }
+
     requestAnimationFrame(loop);
 }
 
-// 🔍 DETECÇÃO RÁPIDA
-function detectar() {
-    const img = ctx.getImageData(0, 0, estado.largura, estado.altura);
-    const d = img.data;
-    
-    let total = 0, somaX = 0, somaY = 0;
-    
-    for (let i = 0; i < d.length; i += 4 * PEDRINHA.passo) {
+function detect() {
+    const imgData = ctx.getImageData(0, 0, state.width, state.height);
+    const d = imgData.data;
+    let total = 0, sumX = 0, sumY = 0;
+
+    for (let i = 0; i < d.length; i += 4 * TARGET.step) {
         const r = d[i], g = d[i+1], b = d[i+2];
-        
-        if (r < PEDRINHA.rMin || r > PEDRINHA.rMax) continue;
-        if (g > PEDRINHA.gMax) continue;
-        if (b > PEDRINHA.bMax) continue;
-        if (r <= g * PEDRINHA.pesoVermelho || r <= b * PEDRINHA.pesoVermelho) continue;
-        
+
+        if (r < TARGET.rMin || r > TARGET.rMax) continue;
+        if (g > TARGET.gMax) continue;
+        if (b > TARGET.bMax) continue;
+        if (r <= g * TARGET.weightRed || r <= b * TARGET.weightRed) continue;
+
         total++;
         const idx = i / 4;
-        somaX += idx % estado.largura;
-        somaY += Math.floor(idx / estado.largura);
+        sumX += idx % state.width;
+        sumY += Math.floor(idx / state.width);
     }
-    
-    if (total >= PEDRINHA.minPts && total <= PEDRINHA.maxPts) {
-        return {
-            x: somaX / total,
-            y: somaY / total
-        };
+
+    if (total >= TARGET.minPts && total <= TARGET.maxPts) {
+        return { x: sumX / total, y: sumY / total };
     }
     return null;
 }
-
-btn.desligar.addEventListener('click', () => {
-    if (estado.stream) estado.stream.getTracks().forEach(t => t.stop());
-    
-    estado.ligado = false;
-    estado.seguindo = false;
-    estado.x = estado.y = 0;
-    estado.visivel = false;
-    estado.stream = null;
-    
-    video.srcObject = null;
-    ctx.clearRect(0, 0, estado.largura, estado.altura);
-    marcadorEl.style.display = 'none';
-    
-    infoEl.innerHTML = `<div class="esperando">Ligue e mostre a pedrinha</div>`;
-    btn.ligar.disabled = false;
-    btn.fixar.disabled = true;
-    btn.fixar.textContent = "🎯 SEGUIR";
-    btn.desligar.disabled = true;
-});
 </script>
 </body>
 </html>
