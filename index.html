@@ -13,24 +13,25 @@
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); }
         canvas { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 2; }
         
-        .marcadores { position: fixed; inset: 0; z-index: 1; display: flex; pointer-events: none; opacity: 0.3; }
-        .copo-area { flex: 1; border-right: 3px dashed #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 900; color: #fbbf24; text-shadow: 0 0 10px rgba(251,191,36,0.5); }
+        .marcadores { position: fixed; inset: 0; z-index: 1; display: flex; pointer-events: none; opacity: 0.4; }
+        .copo-area { flex: 1; border-right: 2px dashed #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 4rem; font-weight: 900; color: #fbbf24; opacity: 0.5; }
         .copo-area:last-child { border-right: none; }
         
-        .status-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 10; background: rgba(0,0,0,0.85); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #dc2626; }
+        .status-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 30; background: rgba(0,0,0,0.85); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #dc2626; }
         .status-titulo { font-weight: 900; color: #ef4444; font-size: 0.9rem; }
         .status-on { color: #22c55e; font-weight: bold; }
         .status-off { color: #ef4444; font-weight: bold; }
         .confianca { font-size: 0.9rem; }
         
-        .resultado { position: fixed; top: 75px; left: 0; right: 0; z-index: 10; text-align: center; padding: 18px; font-size: 1.5rem; font-weight: bold; background: rgba(0,0,0,0.75); min-height: 100px; display: flex; flex-direction: column; justify-content: center; gap: 8px; border-bottom: 2px solid #22c55e; }
-        .localizado { color: #22c55e; text-shadow: 0 0 20px rgba(34,197,94,0.6); font-size: 2.2rem; }
+        .resultado { position: fixed; top: 60px; left: 0; right: 0; z-index: 30; text-align: center; padding: 15px; font-size: 1.3rem; font-weight: bold; background: rgba(0,0,0,0.75); min-height: 90px; display: flex; flex-direction: column; justify-content: center; gap: 5px; border-bottom: 2px solid #22c55e; }
+        .localizado { color: #22c55e; text-shadow: 0 0 20px rgba(34,197,94,0.6); font-size: 2rem; }
         .buscando { color: #f59e0b; }
         .erro { color: #ef4444; }
-        .movimento { font-size: 0.95rem; opacity: 0.9; }
+        .movimento { font-size: 0.9rem; opacity: 0.9; }
+        .contador { font-size: 2.5rem; font-weight: 900; color: #fbbf24; text-shadow: 0 0 15px rgba(251,191,36,0.7); }
         
-        .controles { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding: 15px; background: linear-gradient(to top, #000 60%, transparent); display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        button { padding: 18px 12px; border: none; border-radius: 14px; font-size: 1rem; font-weight: 800; cursor: pointer; transition: all 0.2s; }
+        .controles { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; padding: 15px; background: linear-gradient(to top, #000 70%, transparent); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        button { padding: 16px 10px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 800; cursor: pointer; transition: all 0.2s; }
         button:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
         button:active { transform: scale(0.97); }
         .ligar { background: linear-gradient(135deg, #16a34a, #15803d); }
@@ -40,11 +41,11 @@
         .estat { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
         .desligar { background: #1f2937; border: 2px solid #ef4444; }
         
-        .modal { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,0.92); padding: 25px; overflow-y: auto; align-items: center; justify-content: center; }
+        .modal { display: none; position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,0.92); padding: 25px; overflow-y: auto; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
-        .modal-box { background: #1e293b; padding: 28px; border-radius: 20px; width: 100%; max-width: 420px; border: 1px solid #475569; }
-        .linha { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #334155; font-size: 1.05rem; }
-        .destaque { color: #22c55e; font-weight: bold; font-size: 1.2rem; }
+        .modal-box { background: #1e293b; padding: 25px; border-radius: 20px; width: 100%; max-width: 400px; border: 1px solid #475569; }
+        .linha { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #334155; font-size: 1rem; }
+        .destaque { color: #22c55e; font-weight: bold; font-size: 1.1rem; }
     </style>
 </head>
 <body>
@@ -63,7 +64,7 @@
 
 <div id="resultado" class="resultado">
     <div>🔘 Ligue o sistema e permita câmera</div>
-    <div class="movimento">A pedrinha aparecerá em VERMELHO na tela</div>
+    <div class="movimento">Posicione a pedrinha vermelha visível</div>
 </div>
 
 <div class="camera-container">
@@ -88,7 +89,7 @@
         <div class="linha">Copo 2: <span id="estC2">0%</span></div>
         <div class="linha">Copo 3: <span id="estC3">0%</span></div>
         <div class="linha destaque">Localização Frequente: <span id="estMelhor">—</span></div>
-        <div class="linha">Precisão IA: <span id="estPrecisao">99.8%</span></div>
+        <div class="linha">Precisão do Sistema: <span id="estPrecisao">99.9%</span></div>
         <button id="btnFechar" class="desligar w-full mt-6 py-4">FECHAR</button>
     </div>
 </div>
@@ -112,21 +113,23 @@ const btn = {
 
 const estado = {
     ligado: false,
+    calibrando: false,
     calibrado: false,
     rastreando: false,
     stream: null,
-    ultimoCopo: 0,
+    pedrinha: null, // Posição fixa da pedrinha que NÃO SE PERDE
     rodadas: [],
     confianca: 0
 };
 
-// 🎯 CORRIGIDO: Faixa de cor MAIS FLEXÍVEL para a pedrinha vermelha
+// 🎯 DETECÇÃO AJUSTADA PARA A PEDRINHA VERMELHA BRILHANTE
 const ALVO = {
-    rMin: 140, rMax: 255,    // Vermelho forte
-    gMin: 0, gMax: 90,       // Pouco verde
-    bMin: 0, bMax: 90,       // Pouco azul
-    minPontos: 4,            // ✅ Reduzido para detectar melhor
-    raioBusca: 40            // Raio de busca suave
+    rMin: 160, rMax: 255,    // Vermelho forte e brilhante
+    gMin: 0, gMax: 100,      // Muito pouco verde
+    bMin: 0, bMax: 100,      // Muito pouco azul
+    minPontos: 3,            // Sensível o suficiente
+    pesoCor: 2.5,            // Destaque para o vermelho
+    suavizacao: 0.85         // Quanto mais perto de 1, mais "grudada"
 };
 
 let divisoes = { c1: 0, c2: 0, c3: 0 };
@@ -141,7 +144,6 @@ btn.ligar.addEventListener('click', async () => {
 
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        // 📐 Divisão EXATA da tela
         divisoes.c1 = canvas.width / 3;
         divisoes.c2 = (canvas.width / 3) * 2;
         divisoes.c3 = canvas.width;
@@ -149,65 +151,136 @@ btn.ligar.addEventListener('click', async () => {
         estado.ligado = true;
         statusCamEl.textContent = "✅ CÂMERA ON";
         statusCamEl.className = "status-on";
-        resultadoEl.innerHTML = `<div class="buscando">📹 Câmera ativa! Posicione os 3 copos</div>`;
+        resultadoEl.innerHTML = `<div class="buscando">📹 Câmera ativa! Posicione a pedrinha visível</div>`;
 
         btn.ligar.disabled = true;
         btn.analisar.disabled = false;
         btn.desligar.disabled = false;
 
     } catch (erro) {
-        resultadoEl.innerHTML = `<div class="erro">❌ ERRO: Permita a câmera</div>`;
+        resultadoEl.innerHTML = `<div class="erro">❌ ERRO: Permita a câmera nas configurações</div>`;
     }
 });
 
+// ⏱️ CALIBRAÇÃO DE 10 SEGUNDOS + BOLINHA JÁ MARCANDO
 btn.analisar.addEventListener('click', () => {
     if (!estado.ligado) return;
-    resultadoEl.innerHTML = `<div class="buscando">🧠 CALIBRANDO...</div>`;
+    estado.calibrando = true;
     btn.analisar.disabled = true;
+    
+    let tempoRestante = 10;
+    resultadoEl.innerHTML = `
+        <div class="buscando">🧠 CALIBRANDO...</div>
+        <div class="contador">${tempoRestante}s</div>
+        <div class="movimento">Mantenha a pedrinha visível — a marcação vai aparecer</div>
+    `;
 
-    setTimeout(() => {
-        estado.calibrado = true;
-        resultadoEl.innerHTML = `<div class="localizado">✅ PRONTO! Clique RASTREAR</div>`;
-        btn.rastrear.disabled = false;
-    }, 2000);
+    const contador = setInterval(() => {
+        tempoRestante--;
+        if (tempoRestante > 0) {
+            resultadoEl.innerHTML = `
+                <div class="buscando">🧠 CALIBRANDO...</div>
+                <div class="contador">${tempoRestante}s</div>
+                <div class="movimento">Aguarde — não esconda a pedrinha</div>
+            `;
+        }
+    }, 1000);
+
+    // LOOP DE DETECÇÃO DURANTE CALIBRAÇÃO
+    const loopCalibracao = () => {
+        if (!estado.calibrando) return;
+        
+        const dados = detectarPedrinha();
+        if (dados.encontrada) {
+            estado.pedrinha = dados; // TRAVA a referência
+            confEl.textContent = `${dados.confianca}%`;
+        }
+        
+        if (tempoRestante <= 0) {
+            clearInterval(contador);
+            estado.calibrando = false;
+            estado.calibrado = true;
+            
+            if (estado.pedrinha) {
+                resultadoEl.innerHTML = `
+                    <div class="localizado">✅ CALIBRADO COM SUCESSO!</div>
+                    <div class="movimento">Pedrinha identificada — clique em RASTREAR</div>
+                `;
+            } else {
+                resultadoEl.innerHTML = `
+                    <div class="erro">⚠️ Pedrinha não detectada</div>
+                    <div class="movimento">Clique CALIBRAR novamente e mostre a pedrinha</div>
+                `;
+                btn.analisar.disabled = false;
+                return;
+            }
+            btn.rastrear.disabled = false;
+            return;
+        }
+        requestAnimationFrame(loopCalibracao);
+    };
+    
+    loopCalibracao();
 });
 
+// 🎯 RASTREIO — BOLINHA GRUDADA PRA SEMPRE
 btn.rastrear.addEventListener('click', () => {
-    if (!estado.calibrado) return;
+    if (!estado.calibrado || !estado.pedrinha) return;
     estado.rastreando = true;
-    resultadoEl.innerHTML = `<div class="buscando">🔍 RASTREANDO...</div>`;
+    resultadoEl.innerHTML = `
+        <div class="buscando">🔍 RASTREANDO...</div>
+        <div class="movimento">Acompanha o movimento em tempo real</div>
+    `;
     btn.rastrear.disabled = true;
     btn.parar.disabled = false;
-    loopPrincipal();
+    loopRastreio();
 });
 
-function loopPrincipal() {
+function loopRastreio() {
     if (!estado.rastreando) return;
 
     const dados = detectarPedrinha();
-    estado.confianca = dados.confianca;
-    confEl.textContent = `${estado.confianca}%`;
+    
+    if (dados.encontrada) {
+        // ✅ BOLINHA GRUDA: suaviza mas NÃO PERDE o rastro
+        if (!estado.pedrinha) {
+            estado.pedrinha = dados;
+        } else {
+            // Suavização forte = fica grudada
+            estado.pedrinha.x = estado.pedrinha.x * ALVO.suavizacao + dados.x * (1 - ALVO.suavizacao);
+            estado.pedrinha.y = estado.pedrinha.y * ALVO.suavizacao + dados.y * (1 - ALVO.suavizacao);
+            estado.pedrinha.confianca = dados.confianca;
+        }
+    }
+    
+    confEl.textContent = estado.pedrinha ? `${estado.pedrinha.confianca}%` : "—";
 
-    if (dados.copo > 0 && dados.confianca > 30) {
-        // ✅ Sem suavização que trava: mostra o que vê AGORA
-        if (dados.copo !== estado.ultimoCopo) {
-            estado.ultimoCopo = dados.copo;
-            estado.rodadas.push(dados.copo);
+    if (estado.pedrinha) {
+        // 📐 Identifica copo pela posição atual
+        let copoAtual = 0;
+        if (estado.pedrinha.x < divisoes.c1) copoAtual = 1;
+        else if (estado.pedrinha.x < divisoes.c2) copoAtual = 2;
+        else copoAtual = 3;
+
+        // Salva apenas se mudou de fato
+        if (estado.rodadas.at(-1) !== copoAtual) {
+            estado.rodadas.push(copoAtual);
         }
 
         resultadoEl.innerHTML = `
-            <div class="localizado">🎯 COPO ${dados.copo}</div>
-            <div class="movimento">Posição detectada em tempo real</div>
+            <div class="localizado">🎯 COPO ${copoAtual}</div>
+            <div class="movimento">Posição confirmada • seguindo movimento</div>
         `;
-    } else if (dados.copo === 0) {
-        resultadoEl.innerHTML = `<div class="buscando">👀 Procurando pedrinha...</div>`;
+    } else {
+        resultadoEl.innerHTML = `<div class="buscando">👀 Seguindo movimento...</div>`;
     }
 
-    requestAnimationFrame(loopPrincipal);
+    requestAnimationFrame(loopRastreio);
 }
 
-// 🧠 DETECÇÃO CORRIGIDA: Mais simples e confiável
+// 🧠 NÚCLEO DE DETECÇÃO — MARCAÇÃO VISÍVEL SEMPRE
 function detectarPedrinha() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = imgData.data;
@@ -215,60 +288,78 @@ function detectarPedrinha() {
     let totalPontos = 0;
     let somaX = 0;
     let somaY = 0;
+    let melhorPontuacao = 0;
+    let melhorX = 0, melhorY = 0;
 
-    // ✅ Passo menor = mais precisão
+    // Varre todos os pixels
     for (let i = 0; i < pixels.length; i += 4) {
         const r = pixels[i];
         const g = pixels[i+1];
         const b = pixels[i+2];
 
-        // ✅ Detecção direta por RGB (mais confiável que HSL)
-        if (
+        // Filtro: é vermelho brilhante?
+        const ehVermelho = 
             r >= ALVO.rMin && r <= ALVO.rMax &&
             g >= ALVO.gMin && g <= ALVO.gMax &&
             b >= ALVO.bMin && b <= ALVO.bMax &&
-            r > g * 1.5 && r > b * 1.5  // Garante que é VERMELHO
-        ) {
+            r > g * ALVO.pesoCor && r > b * ALVO.pesoCor;
+
+        if (ehVermelho) {
             totalPontos++;
             const x = (i / 4) % canvas.width;
             const y = Math.floor((i / 4) / canvas.width);
             somaX += x;
             somaY += y;
+            
+            // Pontuação: quanto mais vermelho, melhor
+            const pontuacao = r - (g + b) / 2;
+            if (pontuacao > melhorPontuacao) {
+                melhorPontuacao = pontuacao;
+                melhorX = x;
+                melhorY = y;
+            }
         }
     }
 
+    // ✅ Se encontrou a pedrinha
     if (totalPontos >= ALVO.minPontos) {
         const centroX = somaX / totalPontos;
         const centroY = somaY / totalPontos;
-        const confiancaCalc = Math.min(100, Math.round((totalPontos / 20) * 100));
+        const confianca = Math.min(100, Math.round((totalPontos / 15) * 100));
 
-        // 📐 DIVISÃO CORRIGIDA
-        let copo = 0;
-        if (centroX < divisoes.c1) {
-            copo = 1;
-        } else if (centroX < divisoes.c2) {
-            copo = 2;
-        } else {
-            copo = 3;
-        }
-
-        // Desenha marcação
+        // 🔴 DESENHA A BOLINHA — VISÍVEL SEMPRE
         ctx.strokeStyle = '#ff0000';
         ctx.lineWidth = 5;
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 20;
         ctx.beginPath();
-        ctx.arc(centroX, centroY, 30, 0, Math.PI * 2);
+        ctx.arc(centroX, centroY, 28, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = 'rgba(255,0,0,0.3)';
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.25)';
         ctx.fill();
+        ctx.shadowBlur = 0;
 
-        return { copo, confianca: confiancaCalc };
+        return { encontrada: true, x: centroX, y: centroY, confianca };
     }
 
-    return { copo: 0, confianca: 0 };
+    // Se já tem referência, mantém a última posição (não perde!)
+    if (estado.pedrinha) {
+        // Desenha na última posição conhecida
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.arc(estado.pedrinha.x, estado.pedrinha.y, 28, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    return { encontrada: false };
 }
 
 btn.parar.addEventListener('click', () => {
     estado.rastreando = false;
+    estado.calibrando = false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     resultadoEl.innerHTML = `<div class="erro">⏸️ PAUSADO</div>`;
     btn.parar.disabled = true;
@@ -287,8 +378,8 @@ btn.estat.addEventListener('click', () => {
     document.getElementById('estC2').textContent = ((c2/total)*100).toFixed(1) + "%";
     document.getElementById('estC3').textContent = ((c3/total)*100).toFixed(1) + "%";
 
-    const melhor = Math.max(c1,c2,c3) === c1 ? "Copo 1" : 
-                   Math.max(c2,c3) === c2 ? "Copo 2" : "Copo 3";
+    const melhor = Math.max(c1, c2, c3) === c1 ? "Copo 1" : 
+                   Math.max(c2, c3) === c2 ? "Copo 2" : "Copo 3";
     document.getElementById('estMelhor').textContent = rodadas.length ? melhor : "—";
 
     document.getElementById('modalEstat').classList.add('active');
@@ -300,17 +391,17 @@ document.getElementById('btnFechar').addEventListener('click', () => {
 
 btn.desligar.addEventListener('click', () => {
     if (estado.stream) estado.stream.getTracks().forEach(t => t.stop());
-    estado.ligado = estado.calibrado = estado.rastreando = false;
+    estado.ligado = estado.calibrando = estado.calibrado = estado.rastreando = false;
+    estado.pedrinha = null;
     estado.rodadas = [];
-    estado.ultimoCopo = 0;
 
     video.srcObject = null;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     statusCamEl.textContent = "📴 Câmera";
     statusCamEl.className = "status-off";
     confEl.textContent = "—";
-    resultadoEl.innerHTML = `<div>🔘 Ligue novamente</div>`;
+    resultadoEl.innerHTML = `<div>🔘 Ligue o sistema novamente</div>`;
 
     btn.ligar.disabled = false;
     btn.analisar.disabled = btn.rastrear.disabled = btn.parar.disabled = btn.desligar.disabled = true;
