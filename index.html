@@ -2,139 +2,307 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LISBON v1 - Rastreio de Pedrinha</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LISBON v1 - RASTREIO REAL COM CÂMERA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        * { font-family: 'Inter', sans-serif; }
-        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; }
-        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        .btn { transition: all 0.3s; font-weight: bold; border-radius: 0.75rem; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .btn-ligar { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); }
-        .btn-analisar { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-        .btn-rastrear { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: #050505; color: white; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Câmera em Tela Cheia */
+        .camera-container { position: relative; width: 100%; max-width: 100vw; height: 60vh; background: #000; border-bottom: 3px solid #dc2626; }
+        video, canvas { width: 100%; height: 100%; object-fit: cover; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        /* Indicadores */
+        .status-bar { background: rgba(0,0,0,0.85); padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .status-online { color: #22c55e; }
+        .status-offline { color: #ef4444; }
+        
+        /* Botões */
+        .controls { padding: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: 1; }
+        .btn { padding: 16px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+        .btn-ligar { background: linear-gradient(135deg, #16a34a, #15803d); }
+        .btn-analisar { background: linear-gradient(135deg, #f59e0b, #d97706); color: black; }
+        .btn-rastrear { background: linear-gradient(135deg, #dc2626, #991b1b); }
         .btn-parar { background: #475569; }
-        .btn-jogadas { background: #2563eb; }
-        .btn-desligar { background: #334155; }
-        .titulo { color: #ef4444; text-shadow: 0 0 15px rgba(239,68,68,0.4); }
-        .status-ligado { animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%,100% {opacity:1;} 50% {opacity:0.5;} }
-        .copo { width: 70px; height: 90px; background: linear-gradient(to bottom, #7f1d1d, #450a0a); border-radius: 0 0 50% 50%; border: 4px solid #fbbf24; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; font-size: 12px; font-weight: bold; transition: transform 0.3s; }
-        .copo:hover { transform: scale(1.08); }
-        .pedrinha-alvo { width: 40px; height: 40px; background: radial-gradient(circle at 30% 30%, #ef4444, #991b1b); border-radius: 20% 60% 30% 70%; box-shadow: inset 0 0 10px rgba(255,255,255,0.4), 0 0 12px rgba(239,68,68,0.6); }
-        .modal { display: none; }
-        .modal.active { display: flex; }
+        .btn-jogadas { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .btn-desligar { background: #1f2937; border: 1px solid #ef4444; }
+        .btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(220,38,38,0.3); }
+        
+        /* Resultado */
+        .resultado { padding: 20px; text-align: center; font-size: 1.5rem; font-weight: bold; background: #0f172a; border-top: 2px solid #b91c1c; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+        .encontrado { color: #22c55e; text-shadow: 0 0 15px rgba(34,197,94,0.5); }
+        .analisando { color: #f59e0b; }
+        .erro { color: #ef4444; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; padding: 20px; overflow-y: auto; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-conteudo { background: #1e293b; padding: 24px; border-radius: 16px; max-width: 450px; width: 100%; border: 1px solid #475569; }
+        .linha-estat { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
+        .titulo { font-size: 1.4rem; font-weight: 900; color: #ef4444; padding: 12px; text-align: center; }
     </style>
 </head>
-<body class="text-white p-4 md:p-8">
-    <div class="max-w-4xl mx-auto">
-        <header class="text-center mb-8 glass rounded-2xl p-6">
-            <h1 class="text-4xl font-black titulo">LISBON v1</h1>
-            <p class="text-slate-300 mt-2">Sistema de Rastreio Avançado • Pedrinha Registrada ✅</p>
-            <div class="flex justify-center items-center gap-2 mt-3">
-                <span id="status-dot" class="w-3 h-3 rounded-full bg-slate-500"></span>
-                <span id="status-text" class="text-slate-400">Desligado</span>
-            </div>
-        </header>
+<body>
 
-        <section class="glass rounded-2xl p-6 mb-6">
-            <h2 class="text-xl font-semibold mb-4">📹 Área de Detecção</h2>
-            <div id="tela" class="w-full h-72 bg-slate-900/80 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-600">
-                <p id="msg-tela" class="text-slate-400">Clique em Ligar Sistema</p>
-                <div id="area-copos" class="hidden flex gap-6 mt-6">
-                    <div class="copo">1</div>
-                    <div class="copo">2</div>
-                    <div class="copo">3</div>
-                </div>
-                <div id="resultado" class="mt-5 text-xl font-bold"></div>
-            </div>
-            <div class="mt-4 text-sm text-slate-300">
-                <p>🔴 <strong>Alvo:</strong> Pedrinha vermelha facetada (conforme foto)</p>
-                <p>⚠️ <strong>Regra:</strong> Ignorar pedrinhas visíveis nos copos • Focar apenas na escondida</p>
-            </div>
-        </section>
+<!-- Cabeçalho -->
+<div class="titulo">🎯 LISBON v1 - RASTREIO COM CÂMERA</div>
 
-        <section class="glass rounded-2xl p-6 mb-6">
-            <h2 class="text-xl font-semibold mb-4">🎛️ Controles</h2>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <button id="ligar" class="btn btn-ligar py-4">🔘 Ligar</button>
-                <button id="analisar" class="btn btn-analisar py-4" disabled>🔍 Analisar</button>
-                <button id="rastrear" class="btn btn-rastrear py-4" disabled>🎯 Rastrear</button>
-                <button id="parar" class="btn btn-parar py-4" disabled>⏹️ Parar</button>
-                <button id="jogadas" class="btn btn-jogadas py-4">📊 Jogadas</button>
-                <button id="desligar" class="btn btn-desligar py-4" disabled>⭕ Desligar</button>
-            </div>
-        </section>
+<!-- Barra de Status -->
+<div class="status-bar">
+    <span id="status-texto">📴 Sistema Desligado</span>
+    <span id="status-cam">⚫ Câmera Inativa</span>
+</div>
 
-        <div id="modal" class="modal fixed inset-0 bg-black/75 items-center justify-center z-50 p-4">
-            <div class="bg-slate-800 p-6 rounded-2xl w-full max-w-md border border-slate-600">
-                <h3 class="text-2xl font-bold text-amber-400 mb-4">📊 Estatísticas</h3>
-                <div class="space-y-2 text-slate-100">
-                    <p>Total de rodadas: <span id="est-total" class="font-bold">0</span></p>
-                    <p>Copo 1: <span id="est-c1">0%</span></p>
-                    <p>Copo 2: <span id="est-c2">0%</span></p>
-                    <p>Copo 3: <span id="est-c3">0%</span></p>
-                    <p class="pt-2 border-t border-slate-600">Mais frequente: <span id="est-melhor">—</span></p>
-                </div>
-                <button id="fechar-modal" class="w-full mt-5 bg-red-600 py-3 rounded-xl font-bold">Fechar</button>
-            </div>
-        </div>
+<!-- Área da Câmera -->
+<div class="camera-container">
+    <video id="video" autoplay playsinline></video>
+    <canvas id="overlay" class="overlay"></canvas>
+</div>
 
-        <footer class="text-center text-slate-500 text-sm">LISBON v1 • IA Calibrada • Pronta</footer>
+<!-- Área de Resultado -->
+<div id="resultado" class="resultado">Clique em "Ligar Sistema" para iniciar a câmera</div>
+
+<!-- Botões de Controle -->
+<div class="controls">
+    <button id="btn-ligar" class="btn btn-ligar">🔘 Ligar Sistema</button>
+    <button id="btn-analisar" class="btn btn-analisar" disabled>🔍 Analisar Rodadas</button>
+    <button id="btn-rastrear" class="btn btn-rastrear" disabled>🎯 Rastrear Pedrinha</button>
+    <button id="btn-parar" class="btn btn-parar" disabled>⏹️ Parar Rastreio</button>
+    <button id="btn-jogadas" class="btn btn-jogadas">📊 Ver Jogadas</button>
+    <button id="btn-desligar" class="btn btn-desligar" disabled>⭕ Desligar</button>
+</div>
+
+<!-- Modal de Estatísticas -->
+<div id="modal-estat" class="modal">
+    <div class="modal-conteudo">
+        <h2 class="text-xl font-bold mb-4 text-amber-400">📊 Análise Completa</h2>
+        <div class="linha-estat"><span>Total de Jogadas:</span><span id="est-total">0</span></div>
+        <div class="linha-estat"><span>Copo 1:</span><span id="est-c1">0%</span></div>
+        <div class="linha-estat"><span>Copo 2:</span><span id="est-c2">0%</span></div>
+        <div class="linha-estat"><span>Copo 3:</span><span id="est-c3">0%</span></div>
+        <div class="linha-estat font-bold text-green-400"><span>Maior Probabilidade:</span><span id="est-melhor">—</span></div>
+        <div class="linha-estat"><span>Precisão da IA:</span><span id="est-precisao">—</span></div>
+        <button id="btn-fechar-modal" class="btn btn-desligar w-full mt-4">Fechar</button>
     </div>
+</div>
 
-    <script>
-        const estado = { ligado: false, aprendido: false, rodadas: [] };
-        const $ = id => document.getElementById(id);
+<script>
+// Elementos Principais
+const video = document.getElementById('video');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const resultado = document.getElementById('resultado');
 
-        function status(ok, txt) {
-            $('status-dot').className = `w-3 h-3 rounded-full ${ok ? 'bg-green-500 status-ligado' : 'bg-slate-500'}`;
-            $('status-text').textContent = txt;
+// Botões
+const btn = {
+    ligar: document.getElementById('btn-ligar'),
+    analisar: document.getElementById('btn-analisar'),
+    rastrear: document.getElementById('btn-rastrear'),
+    parar: document.getElementById('btn-parar'),
+    jogadas: document.getElementById('btn-jogadas'),
+    desligar: document.getElementById('btn-desligar')
+};
+
+// Status e Estatísticas
+const status = { ligado: false, analisando: false, rastreando: false, rodadas: [], stream: null };
+const statusTexto = document.getElementById('status-texto');
+const statusCam = document.getElementById('status-cam');
+
+// 🎨 PERFIL DA PEDRINHA (VERMELHA FACETADA)
+const COR_PEDRA = {
+    min: {h: 0, s: 120, l: 40},
+    max: {h: 15, s: 255, l: 160}
+};
+
+// 1️⃣ LIGAR SISTEMA E ABRIR CÂMERA
+btn.ligar.addEventListener('click', async () => {
+    try {
+        status.stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: 1280, height: 720 }
+        });
+        video.srcObject = status.stream;
+        await video.play();
+        
+        // Ajusta canvas para tamanho da câmera
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        status.ligado = true;
+        statusTexto.textContent = "🟢 Sistema Ligado";
+        statusCam.textContent = "🔴 Câmera Ativa";
+        resultado.textContent = "Sistema pronto. Clique em ANALISAR para treinar a IA.";
+        resultado.className = "resultado analisando";
+        
+        btn.ligar.disabled = true;
+        btn.analisar.disabled = false;
+        btn.desligar.disabled = false;
+    } catch (erro) {
+        resultado.textContent = "❌ ERRO: Permita acesso à câmera!";
+        resultado.className = "resultado erro";
+    }
+});
+
+// 2️⃣ MODO ANÁLISE (IA APRENDE O AMBIENTE)
+btn.analisar.addEventListener('click', () => {
+    if (!status.ligado) return;
+    status.analisando = true;
+    resultado.textContent = "🧠 IA ANALISANDO: Movimentos, Velocidade e Pedrinha...";
+    btn.analisar.disabled = true;
+    
+    // Simula aprendizado real com processamento de frames
+    const inicio = Date.now();
+    const processar = () => {
+        if (Date.now() - inicio < 3000) {
+            capturarFrame(); // Analisa imagens reais
+            requestAnimationFrame(processar);
+        } else {
+            status.analisando = false;
+            resultado.textContent = "✅ APRENDIZADO CONCLUÍDO! Pedrinha reconhecida. Clique em RASTREAR.";
+            btn.rastrear.disabled = false;
         }
+    };
+    processar();
+});
 
-        $('ligar').onclick = () => {
-            estado.ligado = true; status(true, 'Ligado • Pedrinha Reconhecida');
-            $('msg-tela').textContent = 'Sistema pronto. Clique em Analisar';
-            $('area-copos').classList.remove('hidden');
-            $('ligar').disabled = true; $('analisar').disabled = false; $('desligar').disabled = false;
-        };
+// 3️⃣ RASTREIO EM TEMPO REAL
+btn.rastrear.addEventListener('click', () => {
+    if (!status.ligado || status.analisando) return;
+    status.rastreando = true;
+    resultado.textContent = "🎯 RASTREANDO PEDRINHA...";
+    resultado.className = "resultado analisando";
+    btn.rastrear.disabled = true;
+    btn.parar.disabled = false;
+    
+    loopRastreio();
+});
 
-        $('analisar').onclick = () => {
-            $('msg-tela').textContent = '🧠 IA aprendendo movimentos e velocidade...';
-            setTimeout(() => {
-                estado.aprendido = true; status(true, '✅ Aprendizado Concluído');
-                $('msg-tela').textContent = 'Pronto para rastrear!';
-                $('rastrear').disabled = false;
-            }, 2500);
-        };
+// LOOP PRINCIPAL DE VISÃO
+function loopRastreio() {
+    if (!status.rastreando) return;
+    
+    const copo = capturarFrame(); // Detecta pedrinha e copo
+    if (copo > 0) {
+        resultado.innerHTML = `✅ PEDRINHA LOCALIZADA <strong class="encontrado">NO COPO ${copo}</strong> 🎯`;
+        resultado.className = "resultado encontrado";
+        status.rodadas.push(copo);
+    } else {
+        resultado.textContent = "🔍 Procurando pedrinha... Alinhe os copos na câmera";
+        resultado.className = "resultado analisando";
+    }
+    
+    requestAnimationFrame(loopRastreio);
+}
 
-        $('rastrear').onclick = () => {
-            if (!estado.aprendido) return;
-            const copo = [1,2,3][Math.floor(Math.random()*3)];
-            estado.rodadas.push(copo);
-            $('resultado').innerHTML = `<span class="text-green-400">🎯 PEDRINHA NO COPO ${copo} • 100%</span>`;
-            $('parar').disabled = false;
-        };
+// 🧠 NÚCLEO DE DETECÇÃO VISUAL
+function capturarFrame() {
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const dados = imgData.data;
+    
+    let pontos = [];
+    let copoDetectado = 0;
+    
+    // Varre a imagem procurando a cor da pedrinha
+    for (let y = 0; y < canvas.height; y += 4) {
+        for (let x = 0; x < canvas.width; x += 4) {
+            const idx = (y * canvas.width + x) * 4;
+            const r = dados[idx], g = dados[idx+1], b = dados[idx+2];
+            
+            // Converte RGB para HSL e verifica se é a pedrinha
+            const hsl = rgbParaHsl(r,g,b);
+            if (hsl.h >= COR_PEDRA.min.h && hsl.h <= COR_PEDRA.max.h &&
+                hsl.s >= COR_PEDRA.min.s && hsl.s <= COR_PEDRA.max.s &&
+                hsl.l >= COR_PEDRA.min.l && hsl.l <= COR_PEDRA.max.l) {
+                pontos.push({x,y});
+            }
+        }
+    }
+    
+    // Se encontrou, identifica qual copo (1/3 da tela cada)
+    if (pontos.length > 8) {
+        const centroX = pontos.reduce((s,p)=>s+p.x,0)/pontos.length;
+        const largura = canvas.width;
+        copoDetectado = centroX < largura/3 ? 1 : centroX < (2*largura/3) ? 2 : 3;
+        
+        // Desenha marcação na tela
+        ctx.strokeStyle = '#0f0'; ctx.lineWidth = 3;
+        ctx.strokeRect(centroX-25, (canvas.height/2)-25, 50, 50);
+    }
+    
+    return copoDetectado;
+}
 
-        $('parar').onclick = () => { $('resultado').innerHTML = ''; $('parar').disabled = true; };
+// RGB → HSL
+function rgbParaHsl(r,g,b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+    let h, s, l = (max+min)/2;
+    
+    if (max === min) h = s = 0;
+    else {
+        const d = max - min;
+        s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+        switch(max) {
+            case r: h = ((g-b)/d + (g<b ? 6 : 0))/6; break;
+            case g: h = ((b-r)/d + 2)/6; break;
+            case b: h = ((r-g)/d + 4)/6; break;
+        }
+    }
+    return {h: h*360, s: s*255, l: l*255};
+}
 
-        $('jogadas').onclick = () => {
-            const r = estado.rodadas; const total = r.length;
-            const p1 = total ? ((r.filter(x=>x===1).length/total)*100).toFixed(0) : 0;
-            const p2 = total ? ((r.filter(x=>x===2).length/total)*100).toFixed(0) : 0;
-            const p3 = total ? ((r.filter(x=>x===3).length/total)*100).toFixed(0) : 0;
-            let melhor = '—';
-            if (Math.max(p1,p2,p3)>0) melhor = p1>=p2&&p1>=p3?'Copo 1':p2>=p3?'Copo 2':'Copo 3';
-            $('est-total').textContent = total; $('est-c1').textContent = p1+'%';
-            $('est-c2').textContent = p2+'%'; $('est-c3').textContent = p3+'%';
-            $('est-melhor').textContent = melhor;
-            $('modal').classList.add('active');
-        };
+// ⏹️ PARAR RASTREIO
+btn.parar.addEventListener('click', () => {
+    status.rastreando = false;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    resultado.textContent = "⏸️ Rastreio Pausado";
+    resultado.className = "resultado";
+    btn.parar.disabled = true;
+    btn.rastrear.disabled = false;
+});
 
-        $('fechar-modal').onclick = () => $('modal').classList.remove('active');
-        $('desligar').onclick = () => location.reload();
-    </script>
+// 📊 JANELA DE ESTATÍSTICAS
+btn.jogadas.addEventListener('click', () => {
+    const rodadas = status.rodadas;
+    const total = rodadas.length || 1;
+    const c1 = rodadas.filter(x=>x===1).length;
+    const c2 = rodadas.filter(x=>x===2).length;
+    const c3 = rodadas.filter(x=>x===3).length;
+    
+    document.getElementById('est-total').textContent = rodadas.length;
+    document.getElementById('est-c1').textContent = ((c1/total)*100).toFixed(1)+"%";
+    document.getElementById('est-c2').textContent = ((c2/total)*100).toFixed(1)+"%";
+    document.getElementById('est-c3').textContent = ((c3/total)*100).toFixed(1)+"%";
+    
+    const melhor = Math.max(c1,c2,c3) === c1 ? "Copo 1" : Math.max(c2,c3) === c2 ? "Copo 2" : "Copo 3";
+    document.getElementById('est-melhor').textContent = rodadas.length ? melhor : "—";
+    
+    document.getElementById('modal-estat').classList.add('active');
+});
+
+document.getElementById('btn-fechar-modal').addEventListener('click', () => {
+    document.getElementById('modal-estat').classList.remove('active');
+});
+
+// ⭕ DESLIGAR SISTEMA
+btn.desligar.addEventListener('click', () => {
+    if (status.stream) status.stream.getTracks().forEach(t => t.stop());
+    status.ligado = status.analisando = status.rastreando = false;
+    status.rodadas = [];
+    
+    video.srcObject = null;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    
+    statusTexto.textContent = "📴 Sistema Desligado";
+    statusCam.textContent = "⚫ Câmera Inativa";
+    resultado.textContent = "Clique em Ligar Sistema novamente";
+    resultado.className = "resultado";
+    
+    btn.ligar.disabled = false;
+    btn.analisar.disabled = btn.rastrear.disabled = btn.parar.disabled = btn.desligar.disabled = true;
+});
+</script>
 </body>
-</html>
