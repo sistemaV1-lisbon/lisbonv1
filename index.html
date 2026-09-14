@@ -3,53 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LISBON — LEVE & RÁPIDA</title>
+    <title>LISBON — HACKER STYLE</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { height: 100%; background: #000; overflow: hidden; font-family: sans-serif; color: white; }
+        html, body { height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; color: white; }
         
         .camera-container { position: fixed; inset: 0; }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(1); }
         canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         
-        .divisores { position: fixed; inset: 0; display: flex; pointer-events: none; opacity: 0.3; }
-        .area { flex: 1; border-right: 2px dashed #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: bold; color: #fbbf24; }
-        .area:last-child { border-right: none; }
+        /* 🟱 ÁREAS DOS COPOS — invisíveis, só referência */
+        .copos { position: fixed; inset: 0; display: flex; pointer-events: none; z-index: 5; }
+        .copo-zone { flex: 1; position: relative; }
         
-        .topo { position: fixed; top: 0; left: 0; right: 0; z-index: 20; background: rgba(0,0,0,0.8); padding: 10px; text-align: center; border-bottom: 2px solid #ef4444; }
-        .titulo { font-weight: bold; font-size: 1rem; color: #ef4444; }
-        .status { font-size: 0.9rem; margin-top: 4px; }
-        .on { color: #22c55e; }
-        .aguardando { color: #f59e0b; }
+        /* 💻 TEXTO HACKER — exatamente igual à imagem */
+        .hack-label {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid #4ade80;
+            z-index: 30;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 12px rgba(74, 222, 128, 0.3);
+        }
         
-        .info { position: fixed; top: 70px; left: 0; right: 0; z-index: 20; text-align: center; padding: 10px; background: rgba(0,0,0,0.6); font-size: 1.1rem; font-weight: bold; }
-        .fixada { color: #fbbf24; text-shadow: 0 0 15px rgba(251,191,36,0.6); font-size: 1.5rem; }
-        .encontrada { color: #22c55e; }
+        /* 🟦 CAIXA AZUL DESTAQUE — igual ao exemplo */
+        .hack-box {
+            position: absolute;
+            top: 15%;
+            left: 10%;
+            right: 10%;
+            bottom: 15%;
+            background: rgba(59, 130, 246, 0.25);
+            border: 3px solid #3b82f6;
+            border-radius: 12px;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.5), inset 0 0 15px rgba(59, 130, 246, 0.2);
+            animation: brilho 1.2s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 15;
+        }
         
-        .botoes { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; padding: 15px; background: linear-gradient(to top, #000 70%, transparent); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        button { padding: 15px 8px; border: none; border-radius: 10px; font-size: 0.9rem; font-weight: bold; cursor: pointer; }
+        @keyframes brilho {
+            from { box-shadow: 0 0 25px rgba(59, 130, 246, 0.5), inset 0 0 15px rgba(59, 130, 246, 0.2); }
+            to { box-shadow: 0 0 35px rgba(59, 130, 246, 0.7), inset 0 0 20px rgba(59, 130, 246, 0.35); }
+        }
+        
+        .info {
+            position: fixed;
+            bottom: 90px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 30;
+            padding: 10px;
+            font-size: 1rem;
+            background: rgba(0,0,0,0.6);
+        }
+        .ativo { color: #4ade80; text-shadow: 0 0 8px rgba(74,222,128,0.5); }
+        .esperando { color: #fbbf24; }
+        
+        .botoes {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 30;
+            padding: 15px;
+            background: linear-gradient(to top, #000 70%, transparent);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        button {
+            padding: 14px 8px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
         button:disabled { opacity: 0.3; cursor: not-allowed; }
-        button:active { transform: scale(0.95); }
-        .ligar { background: #16a34a; }
-        .fixar { background: #f59e0b; color: #000; }
-        .desligar { background: #1f2937; border: 2px solid #ef4444; }
+        .ligar { background: #16a34a; color: #000; }
+        .marcar { background: #3b82f6; color: #fff; }
+        .desligar { background: #1f2937; border: 2px solid #ef4444; color: #fff; }
     </style>
 </head>
 <body>
 
-<div class="divisores">
-    <div class="area">1</div>
-    <div class="area">2</div>
-    <div class="area">3</div>
-</div>
+<!-- 💻 TEXTO HACKER — IGUALZINHO AO EXEMPLO -->
+<div class="hack-label">button.thimbles-game__thimble 99 = 333 69</div>
 
-<div class="topo">
-    <div class="titulo">🎯 LISBON — RASTREIO PURO</div>
-    <div id="status" class="status aguardando">Câmera desligada</div>
-</div>
-
-<div id="info" class="info">
-    <div>Ligue e mostre a pedrinha vermelha</div>
+<!-- 🟦 ÁREAS DOS COPOS -->
+<div class="copos">
+    <div class="copo-zone" id="z1">
+        <div class="hack-box" id="box1" style="display:none;"></div>
+    </div>
+    <div class="copo-zone" id="z2">
+        <div class="hack-box" id="box2" style="display:none;"></div>
+    </div>
+    <div class="copo-zone" id="z3">
+        <div class="hack-box" id="box3" style="display:none;"></div>
+    </div>
 </div>
 
 <div class="camera-container">
@@ -57,9 +120,13 @@
     <canvas id="canvas"></canvas>
 </div>
 
+<div id="info" class="info">
+    <div class="esperando">Ligue → mostre a pedrinha vermelha</div>
+</div>
+
 <div class="botoes">
     <button id="btnLigar" class="ligar">🔘 LIGAR</button>
-    <button id="btnFixar" class="fixar" disabled>🎯 FIXAR</button>
+    <button id="btnMarcar" class="marcar" disabled>🎯 MARCAR</button>
     <button id="btnDesligar" class="desligar" disabled>⭕ DESLIGAR</button>
 </div>
 
@@ -68,47 +135,51 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true, alpha: false });
 const infoEl = document.getElementById('info');
-const statusEl = document.getElementById('status');
+
+const box = {
+    1: document.getElementById('box1'),
+    2: document.getElementById('box2'),
+    3: document.getElementById('box3')
+};
 
 const btn = {
     ligar: document.getElementById('btnLigar'),
-    fixar: document.getElementById('btnFixar'),
+    marcar: document.getElementById('btnMarcar'),
     desligar: document.getElementById('btnDesligar')
 };
 
 const estado = {
     ligado: false,
     stream: null,
-    fixada: false,
+    travado: false,
+    copoAtual: 0,
+    copoFinal: 0,
     x: 0,
     y: 0,
-    conf: 0,
-    ultimoTempo: 0,
+    visivel: false,
     largura: 0,
     altura: 0
 };
 
-// 🔴 PERFIL EXATO DA PEDRINHA — LEVE E PRECISO
+// 🔴 PERFIL EXATO DA PEDRINHA
 const PEDRINHA = {
-    rMin: 150, rMax: 255,
-    gMin: 0, gMax: 100,
-    bMin: 0, bMax: 100,
+    rMin: 145, rMax: 255,
+    gMin: 0,   gMax: 110,
+    bMin: 0,   bMax: 110,
+    pesoVermelho: 2.2,
     minPts: 2,
-    maxPts: 150,
-    pesoVermelho: 2.5,
-    suavidade: 0.65,
-    memoriaMs: 3000,
-    passo: 4 // ⚡ Lê de 4 em 4 pixels — MUITO mais leve
+    maxPts: 180,
+    passo: 3
 };
 
 btn.ligar.addEventListener('click', async () => {
     try {
         estado.stream = await navigator.mediaDevices.getUserMedia({
-            video: { 
+            video: {
                 facingMode: 'environment',
-                width: { ideal: 640 }, // ⚡ Resolução leve
+                width: { ideal: 640 },
                 height: { ideal: 480 },
-                frameRate: { ideal: 24 }
+                frameRate: { ideal: 30 }
             }
         });
         video.srcObject = estado.stream;
@@ -116,14 +187,12 @@ btn.ligar.addEventListener('click', async () => {
         
         estado.largura = canvas.width = video.videoWidth;
         estado.altura = canvas.height = video.videoHeight;
-        
         estado.ligado = true;
-        statusEl.textContent = "✅ CÂMERA LIGADA";
-        statusEl.className = "status on";
-        infoEl.innerHTML = `<div>Mostre a pedrinha → clique FIXAR</div>`;
+        estado.travado = false;
         
+        infoEl.innerHTML = `<div class="ativo">✅ SISTEMA ATIVO — mostre a pedrinha</div>`;
         btn.ligar.disabled = true;
-        btn.fixar.disabled = false;
+        btn.marcar.disabled = true;
         btn.desligar.disabled = false;
         
         loop();
@@ -133,86 +202,76 @@ btn.ligar.addEventListener('click', async () => {
     }
 });
 
-btn.fixar.addEventListener('click', () => {
-    const achou = procurar();
-    if (achou) {
-        estado.fixada = true;
-        estado.x = achou.x;
-        estado.y = achou.y;
-        estado.conf = achou.conf;
-        estado.ultimoTempo = Date.now();
-        
-        infoEl.innerHTML = `<div class="fixada">✅ PEDRINHA FIXADA — NÃO SOLTA MAIS!</div>`;
-        btn.fixar.disabled = true;
-        btn.fixar.textContent = "✅ FIXADA";
-    } else {
-        infoEl.innerHTML = `<div style="color:#f59e0b">⚠️ Mostre a pedrinha primeiro</div>`;
+// 🎯 TRAVA A CAIXA — confirmação final
+btn.marcar.addEventListener('click', () => {
+    if (!estado.copoAtual || estado.travado) return;
+    
+    estado.travado = true;
+    estado.copoFinal = estado.copoAtual;
+    
+    // Mostra SÓ a caixa certa
+    for (let i = 1; i <= 3; i++) {
+        box[i].style.display = i === estado.copoFinal ? 'block' : 'none';
     }
+    
+    infoEl.innerHTML = `<div class="ativo">✅ CONFIRMADO — COPO ${estado.copoFinal}</div>`;
+    btn.marcar.disabled = true;
+    btn.marcar.textContent = "✅ FIXADO";
 });
 
 function loop() {
     if (!estado.ligado) return;
     
-    const agora = Date.now();
-    
     ctx.clearRect(0, 0, estado.largura, estado.altura);
     ctx.drawImage(video, 0, 0, estado.largura, estado.altura);
     
-    const vista = procurar();
-    
-    if (vista) {
-        if (estado.fixada) {
-            // Segue suave e fiel
-            estado.x = estado.x * PEDRINHA.suavidade + vista.x * (1 - PEDRINHA.suavidade);
-            estado.y = estado.y * PEDRINHA.suavidade + vista.y * (1 - PEDRINHA.suavidade);
-        } else {
-            estado.x = vista.x;
-            estado.y = vista.y;
-        }
-        estado.conf = vista.conf;
-        estado.ultimoTempo = agora;
-        
-        if (estado.fixada) {
-            statusEl.textContent = `✅ Vendo — Confiança: ${estado.conf}%`;
-        } else {
-            statusEl.textContent = "🔍 Procurando...";
-        }
-        statusEl.className = "status on";
-        
-    } else if (estado.fixada && estado.x) {
-        const semVer = agora - estado.ultimoTempo;
-        if (semVer < PEDRINHA.memoriaMs) {
-            statusEl.textContent = "👀 Coberta — mantendo rastro...";
-        } else {
-            statusEl.textContent = "⚠️ Aguardando reaparecer";
-        }
-        statusEl.className = "status aguardando";
+    // Se já travou, mantém só a caixa confirmada
+    if (estado.travado) {
+        requestAnimationFrame(loop);
+        return;
     }
     
-    // Mostra qual copo
-    if (estado.x && estado.conf > 40) {
-        let copo = 0;
-        if (estado.x < estado.largura / 3) copo = 1;
-        else if (estado.x < estado.largura * 2 / 3) copo = 2;
-        else copo = 3;
-        
-        if (estado.fixada) {
-            infoEl.innerHTML = `<div class="fixada">🎯 COPO ${copo} — PEDRINHA AQUI!</div>`;
-        } else {
-            infoEl.innerHTML = `<div class="encontrada">🎯 COPO ${copo}</div>`;
-        }
-    }
+    // 🔍 DETECÇÃO EM TEMPO REAL
+    const achou = detectar();
     
-    // Desenha a bolinha
-    if (estado.x && estado.y) {
-        desenhar(estado.x, estado.y, estado.fixada, agora - estado.ultimoTempo > 1000);
+    if (achou) {
+        estado.x = achou.x;
+        estado.y = achou.y;
+        estado.visivel = true;
+        
+        // Define qual copo
+        if (estado.x < estado.largura / 3) {
+            estado.copoAtual = 1;
+        } else if (estado.x < estado.largura * 2 / 3) {
+            estado.copoAtual = 2;
+        } else {
+            estado.copoAtual = 3;
+        }
+        
+        // 🔵 CAIXA AZUL SEGUE EM TEMPO REAL
+        for (let i = 1; i <= 3; i++) {
+            box[i].style.display = i === estado.copoAtual ? 'block' : 'none';
+        }
+        
+        infoEl.innerHTML = `<div class="ativo">👁️ PEDRINHA NO COPO ${estado.copoAtual} → clique MARCAR</div>`;
+        btn.marcar.disabled = false;
+        
+    } else {
+        estado.visivel = false;
+        estado.copoAtual = 0;
+        
+        // Esconde todas se não vir
+        for (let i = 1; i <= 3; i++) box[i].style.display = 'none';
+        
+        infoEl.innerHTML = `<div class="esperando">👀 Pedrinha fora de vista — mostre novamente</div>`;
+        btn.marcar.disabled = true;
     }
     
     requestAnimationFrame(loop);
 }
 
-// 🔍 DETECÇÃO LEVE — SEM CALCULOS DESNECESSÁRIOS
-function procurar() {
+// 🔍 DETECÇÃO PURA — SEM ATRASO
+function detectar() {
     const img = ctx.getImageData(0, 0, estado.largura, estado.altura);
     const d = img.data;
     
@@ -229,64 +288,37 @@ function procurar() {
         total++;
         const idx = i / 4;
         somaX += idx % estado.largura;
-        somaY += (idx / estado.largura) | 0;
+        somaY += Math.floor(idx / estado.largura);
     }
     
     if (total >= PEDRINHA.minPts && total <= PEDRINHA.maxPts) {
         return {
             x: somaX / total,
-            y: somaY / total,
-            conf: Math.min(100, total * 3)
+            y: somaY / total
         };
     }
     return null;
-}
-
-// 🔴 BOLINHA — MESMO VISUAL
-function desenhar(x, y, fixada, tracejado) {
-    ctx.shadowColor = fixada ? '#fbbf24' : '#ff0000';
-    ctx.shadowBlur = fixada ? 40 : 25;
-    ctx.strokeStyle = fixada ? '#fbbf24' : '#ff0000';
-    ctx.lineWidth = 7;
-    
-    if (tracejado) ctx.setLineDash([6, 4]);
-    else ctx.setLineDash([]);
-    
-    ctx.beginPath();
-    ctx.arc(x, y, 32, 0, Math.PI * 2);
-    ctx.stroke();
-    
-    ctx.fillStyle = fixada ? 'rgba(251,191,36,0.25)' : 'rgba(255,0,0,0.25)';
-    ctx.fill();
-    
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 18, 0, Math.PI * 2);
-    ctx.stroke();
-    
-    ctx.setLineDash([]);
-    ctx.shadowBlur = 0;
 }
 
 btn.desligar.addEventListener('click', () => {
     if (estado.stream) estado.stream.getTracks().forEach(t => t.stop());
     
     estado.ligado = false;
-    estado.fixada = false;
+    estado.travado = false;
+    estado.copoAtual = estado.copoFinal = 0;
     estado.x = estado.y = 0;
-    estado.conf = 0;
+    estado.visivel = false;
     estado.stream = null;
     
     video.srcObject = null;
     ctx.clearRect(0, 0, estado.largura, estado.altura);
     
-    statusEl.textContent = "Câmera desligada";
-    statusEl.className = "status aguardando";
-    infoEl.innerHTML = `<div>Ligue e mostre a pedrinha</div>`;
+    for (let i = 1; i <= 3; i++) box[i].style.display = 'none';
     
+    infoEl.innerHTML = `<div class="esperando">Ligue e mostre a pedrinha</div>`;
     btn.ligar.disabled = false;
-    btn.fixar.disabled = true;
-    btn.fixar.textContent = "🎯 FIXAR";
+    btn.marcar.disabled = true;
+    btn.marcar.textContent = "🎯 MARCAR";
     btn.desligar.disabled = true;
 });
 </script>
